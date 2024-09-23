@@ -1,0 +1,28 @@
+SS5104,follows,SS5102
+SS5104,follows,SS5103
+SS5201,is manager of ,SS5202
+SS5201,is manager of ,SS5207
+SS5201,is manager of ,SS5212
+SS5202,is previous to,SS5213
+SS5212,is previous to,SS5213
+SS5202 ,is manager of ,SS5203
+SS5202,is manager of ,SS5204
+SS5202 ,is manager of ,SS5205
+SS5202,is manager of ,SS5206
+SS5207,is manager of ,SS5208
+SS5207,is manager of ,SS5209
+SS5207,is manager of ,SS5210
+SS5207,is manager of ,SS5211
+SS5207,is previous to,SS5212
+SS5212,is manager of ,SS5213
+SS5214,follows to,SS5213
+SS5215,follows to,SS5213
+SS5302,parallel to,SS5301
+SS5303,follows to,SS5301
+SS5401,is previous to,SS5404
+SS5404,follows from,SS5401
+SS5402,is manager of,SS5403
+SS5402,is previous to,SS5404
+SS5404,follows from,SS5402
+SS5405,follows from,SS5404
+SS5404,is previous to,SS5405

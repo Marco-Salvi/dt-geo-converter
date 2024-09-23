@@ -1,0 +1,102 @@
+{
+  "name": "WF5301",
+  "steps": [
+    {
+      "name": "ST530101"
+    },
+    {
+      "name": "ST530102",
+      "software": [
+        {
+          "name": "SS5302",
+          "datasets": [
+            {
+              "dataset_name": "DT5301",
+              "role": "is input to"
+            },
+            {
+              "dataset_name": "DT5301",
+              "role": "is updated by"
+            },
+            {
+              "dataset_name": "DT5302",
+              "role": "is input to"
+            },
+            {
+              "dataset_name": "DT5302",
+              "role": "is updated by"
+            },
+            {
+              "dataset_name": "DT5303",
+              "role": "is input to"
+            },
+            {
+              "dataset_name": "DT5303",
+              "role": "is updated by"
+            },
+            {
+              "dataset_name": "DT5304",
+              "role": "is input to"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ST530103",
+      "software": [
+        {
+          "name": "SS5301",
+          "datasets": [
+            {
+              "dataset_name": "DT5301",
+              "role": "is input to"
+            },
+            {
+              "dataset_name": "DT5302",
+              "role": "is input to"
+            },
+            {
+              "dataset_name": "DT5303",
+              "role": "is input to"
+            },
+            {
+              "dataset_name": "DT5304",
+              "role": "is the output from"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ST530104",
+      "software": [
+        {
+          "name": "SS5303",
+          "datasets": [
+            {
+              "dataset_name": "DT5301",
+              "role": "is input to"
+            },
+            {
+              "dataset_name": "DT5302",
+              "role": "is input to"
+            },
+            {
+              "dataset_name": "DT5303",
+              "role": "is input to"
+            },
+            {
+              "dataset_name": "DT5304",
+              "role": "is input to"
+            },
+            {
+              "dataset_name": "DT5305",
+              "role": "is the output from"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
