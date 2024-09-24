@@ -2,10 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"dt-geo-db/cwl"
+	workflow2 "dt-geo-db/workflow"
 	"encoding/csv"
 	json2 "encoding/json"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
+	yaml2 "gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"strings"
@@ -39,7 +42,7 @@ func main() {
 	fmt.Println("Database created and CSV data imported successfully")
 
 	// Get a workflow from the database
-	workflow, err := GetWorkflowByName(db, "WF5301")
+	workflow, err := workflow2.GetWorkflowByName(db, "WF5401")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,6 +54,15 @@ func main() {
 
 	//save the json to a file
 	err = os.WriteFile("workflow.json", json, 0644)
+
+	result := cwl.ConvertWorkflowToCWL(workflow)
+	yaml, err := yaml2.Marshal(result)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//save the json to a file
+	err = os.WriteFile("workflow.cwl", yaml, 0644)
 }
 
 func createTables(db *sql.DB) error {
