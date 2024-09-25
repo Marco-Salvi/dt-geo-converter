@@ -1,87 +1,28 @@
 {
-  "name": "WF5401",
+  "name": "WF7101",
   "steps": [
     {
-      "name": "ST540101"
+      "name": "ST710101"
     },
     {
-      "name": "ST540102",
+      "name": "ST710102"
+    },
+    {
+      "name": "ST710103",
       "software": [
         {
-          "name": "SS5401",
-          "datasets": [
-            {
-              "dataset_name": "DT5401",
-              "role": "is input to"
-            },
-            {
-              "dataset_name": "DT5402",
-              "role": "is output from"
-            }
-          ]
+          "name": "SS7101"
         }
       ]
     },
     {
-      "name": "ST540103",
-      "software": [
-        {
-          "name": "SS5402",
-          "datasets": [
-            {
-              "dataset_name": "DT5403",
-              "role": "is output from"
-            },
-            {
-              "dataset_name": "DT5403",
-              "role": "is input to"
-            },
-            {
-              "dataset_name": "DT5404",
-              "role": "is output from"
-            }
-          ]
-        },
-        {
-          "name": "SS5403"
-        }
-      ]
+      "name": "ST710104"
     },
     {
-      "name": "ST540104",
-      "software": [
-        {
-          "name": "SS5404",
-          "datasets": [
-            {
-              "dataset_name": "DT5402",
-              "role": "is input to"
-            },
-            {
-              "dataset_name": "DT5404",
-              "role": "is input to"
-            },
-            {
-              "dataset_name": "DT5405",
-              "role": "is output from"
-            }
-          ]
-        }
-      ]
+      "name": "ST710105"
     },
     {
-      "name": "ST540105",
-      "software": [
-        {
-          "name": "SS5405",
-          "datasets": [
-            {
-              "dataset_name": "DT5405",
-              "role": "is input from"
-            }
-          ]
-        }
-      ]
+      "name": "ST710106"
     }
   ]
 }

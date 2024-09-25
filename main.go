@@ -3,18 +3,18 @@ package main
 import (
 	"database/sql"
 	"dt-geo-db/cwl"
-	workflow2 "dt-geo-db/workflow"
 	"encoding/csv"
-	json2 "encoding/json"
 	"fmt"
+	"github.com/dominikbraun/graph/draw"
 	_ "github.com/mattn/go-sqlite3"
-	yaml2 "gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"strings"
 )
 
 func main() {
+	wp := "wp5"
+
 	err := os.Remove("./db.db")
 	if err != nil {
 		log.Println(err)
@@ -34,35 +34,37 @@ func main() {
 	}
 
 	// Import data from CSV files
-	err = importDataFromCSV(db)
+	err = importDataFromCSV(db, wp)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Println("Database created and CSV data imported successfully")
 
-	// Get a workflow from the database
-	workflow, err := workflow2.GetWorkflowByName(db, "WF5401")
-	if err != nil {
-		log.Fatal(err)
+	// get all workflows ids from the db
+	wfs, err := GetWorkflows(db)
+
+	for _, wf := range wfs {
+		path := "workflows/" + wp + "/" + wf + "/"
+
+		gr, err := cwl.GetWorkflowExecutionOrder(db, wf, path)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = os.MkdirAll(path, os.ModePerm)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		file, err := os.Create(path + "steps.dot")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		_ = draw.DOT(gr, file)
 	}
-
-	json, err := json2.MarshalIndent(workflow, "", "  ")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	//save the json to a file
-	err = os.WriteFile("workflow.json", json, 0644)
-
-	result := cwl.ConvertWorkflowToCWL(workflow)
-	yaml, err := yaml2.Marshal(result)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	//save the json to a file
-	err = os.WriteFile("workflow.cwl", yaml, 0644)
 }
 
 func createTables(db *sql.DB) error {
@@ -135,27 +137,28 @@ func createTables(db *sql.DB) error {
 	return nil
 }
 
-func importDataFromCSV(db *sql.DB) error {
+func importDataFromCSV(db *sql.DB, folder string) error {
 	// Import relationship data using the generic function
 	relationships := map[string]string{
-		"WF_WF": "csvs/wf_wf.csv",
-		"ST_ST": "csvs/st_st.csv",
-		"SS_SS": "csvs/ss_ss.csv",
-		"DT_DT": "csvs/dt_dt.csv",
-		"SS_ST": "csvs/ss_st.csv",
-		"ST_WF": "csvs/wf_st.csv",
-		"DT_ST": "csvs/dt_st.csv",
-		"DT_SS": "csvs/dt_ss.csv",
+		"WF_WF": folder + "/wf_wf.csv",
+		"ST_ST": folder + "/st_st.csv",
+		"SS_SS": folder + "/ss_ss.csv",
+		"DT_DT": folder + "/dt_dt.csv",
+		"SS_ST": folder + "/ss_st.csv",
+		"ST_WF": folder + "/st_wf.csv",
+		"DT_ST": folder + "/dt_st.csv",
+		"DT_SS": folder + "/dt_ss.csv",
 	}
 
 	for table, file := range relationships {
+		log.Println("importing table: " + file)
 		err := importFromCSV(db, table, file)
 		if err != nil {
 			return err
 		}
 	}
 
-	err := insertWF(db, "csvs/wf.csv")
+	err := insertWF(db, folder+"/wf.csv")
 	if err != nil {
 		return err
 	}
@@ -216,7 +219,6 @@ func insertWF(db *sql.DB, filename string) error {
 	defer file.Close()
 
 	reader := csv.NewReader(file)
-	reader.FieldsPerRecord = -1 // Allow variable number of fields per record
 
 	query := "INSERT INTO WF (name, description, author) VALUES (?, ?, ?)"
 	stmt, err := db.Prepare(query)
@@ -246,4 +248,24 @@ func insertWF(db *sql.DB, filename string) error {
 	}
 
 	return nil
+}
+
+func GetWorkflows(db *sql.DB) ([]string, error) {
+	rows, err := db.Query("SELECT name FROM WF")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var workflows []string
+	for rows.Next() {
+		var name string
+		err = rows.Scan(&name)
+		if err != nil {
+			return nil, err
+		}
+		workflows = append(workflows, name)
+	}
+
+	return workflows, nil
 }

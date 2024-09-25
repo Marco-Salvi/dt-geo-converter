@@ -1,0 +1,12 @@
+WF7201,input to,WF7202
+WF7301,input to,WF7104
+WF7301,input to,WF7105
+WF7301,input to,WF7603
+WF7401,input to,WF6101
+WF7402,input to,WF6101
+WF7403,input to,WF6101
+WF7501,input to,WF7502
+WF7602,is part of,WF7601
+WF7602,is a new version of,WF7601
+WF7603,is part of,WF7601
+WF7603,is a new version of,WF7601

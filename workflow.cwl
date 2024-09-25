@@ -4,9 +4,6 @@ cwlVersion: v1.2
 class: Workflow
 
 inputs:
-  DT5301: Directory
-  DT5302: Directory
-  DT5303: Directory
 
 outputs:
   DT5301:
@@ -25,9 +22,9 @@ outputs:
 steps:
   SS5301:
     in:
-      DT5301: DT5301
-      DT5302: DT5302
-      DT5303: DT5303
+      DT5301: ST530101/DT5301
+      DT5302: ST530101/DT5302
+      DT5303: ST530101/DT5303
     run:
       class: Operation
       inputs:
@@ -40,9 +37,9 @@ steps:
     - DT5304
   SS5302:
     in:
-      DT5301: DT5301
-      DT5302: DT5302
-      DT5303: DT5303
+      DT5301: ST530101/DT5301
+      DT5302: ST530101/DT5302
+      DT5303: ST530101/DT5303
       DT5304: SS5301/DT5304
     run:
       class: Operation
@@ -62,17 +59,26 @@ steps:
   SS5303:
     in:
       DT5301: SS5302/DT5301
-      DT5302: SS5302/DT5302
-      DT5303: SS5302/DT5303
       DT5304: SS5301/DT5304
     run:
       class: Operation
       inputs:
         DT5301: Directory
-        DT5302: Directory
-        DT5303: Directory
         DT5304: Directory
       outputs:
         DT5305: Directory
     out:
     - DT5305
+  ST530101:
+    in:
+    run:
+      class: Operation
+      inputs:
+      outputs:
+        DT5301: Directory
+        DT5302: Directory
+        DT5303: Directory
+    out:
+    - DT5301
+    - DT5302
+    - DT5303
