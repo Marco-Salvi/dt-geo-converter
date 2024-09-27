@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"dt-geo-db/cwl"
+	"dt-geo-db/implicit"
 	"encoding/csv"
 	"fmt"
 	"github.com/dominikbraun/graph/draw"
@@ -64,6 +65,15 @@ func main() {
 		defer file.Close()
 
 		_ = draw.DOT(gr, file)
+	}
+
+	test, err := implicit.GetWorkflowGraph("WF5401", db)
+	if err != nil {
+		panic(err)
+	}
+	err = test.SaveToFile(db)
+	if err != nil {
+		panic(err)
 	}
 }
 

@@ -294,42 +294,42 @@ func buildDependencyGraph(steps []step, relationships []Relationship, path strin
 		case "follows", "follows from", "follows to":
 			// A follows B => B must be executed before A
 			// Edge: B -> A
-			if err := g.AddEdge(rel.ID2, rel.ID1); err != nil {
+			if err := g.AddEdge(rel.ID2, rel.ID1, graph.EdgeAttribute("relationship", rel.RelationshipType)); err != nil {
 				//return nil, fmt.Errorf("error adding edge '%s' -> '%s': %v", rel.ID2, rel.ID1, err)
 				//log.Printf("Warning: error adding edge '%s' -> '%s': %v", rel.ID2, rel.ID1, err)
 			}
 		case "parent of":
 			// A is parent of B => A must be executed before B
 			// Edge: A -> B
-			if err := g.AddEdge(rel.ID1, rel.ID2); err != nil {
+			if err := g.AddEdge(rel.ID1, rel.ID2, graph.EdgeAttribute("relationship", rel.RelationshipType)); err != nil {
 				//return nil, fmt.Errorf("error adding edge '%s' -> '%s': %v", rel.ID1, rel.ID2, err)
 				//log.Printf("Warning: error adding edge '%s' -> '%s': %v", rel.ID1, rel.ID2, err)
 			}
 		case "manages", "is manager of":
 			// A manages B => A must be executed before B
 			// Edge: A -> B
-			if err := g.AddEdge(rel.ID1, rel.ID2); err != nil {
+			if err := g.AddEdge(rel.ID1, rel.ID2, graph.EdgeAttribute("relationship", rel.RelationshipType)); err != nil {
 				//return nil, fmt.Errorf("error adding edge '%s' -> '%s': %v", rel.ID1, rel.ID2, err)
 				//log.Printf("Warning: error adding edge '%s' -> '%s': %v", rel.ID1, rel.ID2, err)
 			}
 		case "is input to":
 			// A is input to B => A must be executed before B
 			// Edge: A -> B
-			if err := g.AddEdge(rel.ID1, rel.ID2); err != nil {
+			if err := g.AddEdge(rel.ID1, rel.ID2, graph.EdgeAttribute("relationship", rel.RelationshipType)); err != nil {
 				//return nil, fmt.Errorf("error adding edge '%s' -> '%s': %v", rel.ID1, rel.ID2, err)
 				//log.Printf("Warning: error adding edge '%s' -> '%s': %v", rel.ID1, rel.ID2, err)
 			}
 		case "is previous to":
 			// A is previous to B => A must be executed before B
 			// Edge: A -> B
-			if err := g.AddEdge(rel.ID1, rel.ID2); err != nil {
+			if err := g.AddEdge(rel.ID1, rel.ID2, graph.EdgeAttribute("relationship", rel.RelationshipType)); err != nil {
 				//return nil, fmt.Errorf("error adding edge '%s' -> '%s': %v", rel.ID1, rel.ID2, err)
 				//log.Printf("Warning: error adding edge '%s' -> '%s': %v", rel.ID1, rel.ID2, err)
 			}
 		case "is part of":
 			// A is part of B => A must be executed before B
 			// Edge: A -> B
-			if err := g.AddEdge(rel.ID1, rel.ID2); err != nil {
+			if err := g.AddEdge(rel.ID1, rel.ID2, graph.EdgeAttribute("relationship", rel.RelationshipType)); err != nil {
 				//return nil, fmt.Errorf("error adding edge '%s' -> '%s': %v", rel.ID1, rel.ID2, err)
 				//log.Printf("Warning: error adding edge '%s' -> '%s': %v", rel.ID1, rel.ID2, err)
 			}

@@ -1,5 +1,10 @@
 package cwl
 
+import (
+	"gopkg.in/yaml.v3"
+	"os"
+)
+
 // Cwl represents the top-level CWL workflow.
 type Cwl struct {
 	CWLVersion string            `yaml:"cwlVersion"`
@@ -25,8 +30,8 @@ type Step struct {
 // Run represents the run section of a step.
 type Run struct {
 	Class   string            `yaml:"class"`
-	Inputs  map[string]string `yaml:"inputs"`
-	Outputs map[string]string `yaml:"outputs"`
+	Inputs  map[string]IOType `yaml:"inputs"`
+	Outputs map[string]IOType `yaml:"outputs"`
 }
 
 // IOType represents the type of an input/output (e.g., Directory, File).
@@ -36,3 +41,17 @@ const (
 	Directory IOType = "Directory"
 	File      IOType = "File"
 )
+
+func (c Cwl) SaveToFile(name string) error {
+	v, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(name, v, 0622)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
