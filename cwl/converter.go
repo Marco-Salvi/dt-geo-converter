@@ -338,7 +338,7 @@ func buildDependencyGraph(steps []step, relationships []Relationship, path strin
 			// No edge is added
 		default:
 			// Handle unknown relationship types if necessary
-			log.Printf("Warning: Unknown relationship type '%s' between '%s' and '%s'", rel.RelationshipType, rel.ID1, rel.ID2)
+			log.Printf("WARNING: Unknown relationship type '%s' between '%s' and '%s'", rel.RelationshipType, rel.ID1, rel.ID2)
 		}
 	}
 

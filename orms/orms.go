@@ -211,3 +211,62 @@ func GetDTSSRelationshipsForSS(db *sql.DB, ssID string) ([]DTSSRelationship, err
 
 	return relationships, nil
 }
+
+func GetDTsForWF(db *sql.DB, wfName string) ([]DT, error) {
+	query := `
+        SELECT DISTINCT dt_st.id1 AS dt_id
+        FROM DT_ST dt_st
+        JOIN ST_WF st_wf ON dt_st.id2 = st_wf.id1
+        WHERE st_wf.id2 = ?
+    `
+
+	rows, err := db.Query(query, wfName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query DTs for WF: %v", err)
+	}
+	defer rows.Close()
+
+	var dataTypes []DT
+	for rows.Next() {
+		var dt DT
+		if err := rows.Scan(&dt.ID); err != nil {
+			return nil, fmt.Errorf("failed to scan DT row: %v", err)
+		}
+		dataTypes = append(dataTypes, dt)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating DT rows: %v", err)
+	}
+
+	return dataTypes, nil
+}
+func GetDTSTRelationshipsForWF(db *sql.DB, wfName string) ([]DTSTRelationship, error) {
+	query := `
+        SELECT dt_st.id1 AS dt_id, dt_st.relationship_type, dt_st.id2 AS st_id
+        FROM DT_ST dt_st
+        JOIN ST_WF st_wf ON dt_st.id2 = st_wf.id1
+        WHERE st_wf.id2 = ?
+    `
+
+	rows, err := db.Query(query, wfName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query DT-ST relationships for WF: %v", err)
+	}
+	defer rows.Close()
+
+	var relationships []DTSTRelationship
+	for rows.Next() {
+		var rel DTSTRelationship
+		if err := rows.Scan(&rel.DTID, &rel.RelationshipType, &rel.STID); err != nil {
+			return nil, fmt.Errorf("failed to scan DT-ST relationship row: %v", err)
+		}
+		relationships = append(relationships, rel)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating DT-ST relationship rows: %v", err)
+	}
+
+	return relationships, nil
+}

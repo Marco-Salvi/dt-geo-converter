@@ -7,11 +7,12 @@ import (
 
 // Cwl represents the top-level CWL workflow.
 type Cwl struct {
-	CWLVersion string            `yaml:"cwlVersion"`
-	Class      string            `yaml:"class"`
-	Inputs     map[string]IOType `yaml:"inputs"`
-	Outputs    map[string]Output `yaml:"outputs"`
-	Steps      map[string]Step   `yaml:"steps"`
+	CWLVersion   string                       `yaml:"cwlVersion"`
+	Class        string                       `yaml:"class"`
+	Inputs       map[string]IOType            `yaml:"inputs"`
+	Outputs      map[string]Output            `yaml:"outputs"`
+	Requirements map[string]map[string]string `yaml:"requirements,omitempty"`
+	Steps        map[string]Step              `yaml:"steps"`
 }
 
 // Output represents an output in the CWL workflow.
@@ -22,9 +23,9 @@ type Output struct {
 
 // Step represents a step in the CWL workflow.
 type Step struct {
-	Run Run               `yaml:"run"`
-	In  map[string]string `yaml:"in"`  // Corrected to map[string]string
-	Out []string          `yaml:"out"` // Corrected to []string
+	Run any               `yaml:"run,omitempty"` // TODO find a better way to represent both Run and string objects instead of any
+	In  map[string]string `yaml:"in,omitempty"`
+	Out []string          `yaml:"out,omitempty"`
 }
 
 // Run represents the run section of a step.
