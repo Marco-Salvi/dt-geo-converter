@@ -65,9 +65,6 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 		}
 	}
 
-	log.Println(inputs)
-	log.Println(outputs)
-
 	// build the objects for the cwl inputs and outputs
 	for dt, dtSource := range inputs {
 		cwlInputs[dt] = cwl.IOType(dtSource)
@@ -90,7 +87,12 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 		stepInputs := make(map[string]string)
 		var stepOutputs []string
 
-		for _, relationship := range dtst {
+		relationships, err := orms.GetDTSTRelationships(db, step.Id)
+		if err != nil {
+			return cwl.Cwl{}, err
+		}
+
+		for _, relationship := range relationships {
 			datasetSource, err := getDTSourceWorkflow(workflow, relationship.DTID)
 			if err != nil {
 				log.Printf("error %s", err)
@@ -101,14 +103,6 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 				stepInput = datasetSource + "/" + relationship.DTID
 			}
 
-			// If the dataset of this relationship is in the global outputs make it so that it considers the source
-			//_, ok := outputs[relationship.DTID]
-			//if ok {
-			//	outputs[relationship.DTID] = cwl.Output{
-			//		Type:         cwl.Directory,
-			//		OutputSource: stepInput,
-			//	}
-			//}
 			switch relationship.RelationshipType {
 			case "is input to", "is the input to", "is input from":
 				stepInputs[relationship.DTID] = stepInput
