@@ -2,11 +2,10 @@ package main
 
 import (
 	"database/sql"
-	"dt-geo-db/cwl"
 	"dt-geo-db/implicit"
 	"encoding/csv"
+	"flag"
 	"fmt"
-	"github.com/dominikbraun/graph/draw"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"os"
@@ -14,67 +13,117 @@ import (
 )
 
 func main() {
-	wp := "wp5"
+	// Define command-line flags
+	dbFile := flag.String("db", "./db.db", "Path to the database file")
+	workflowID := flag.String("wf", "WF5201", "Workflow ID to process")
+	workPackage := flag.String("wp", "wp5", "Work package identifier")
+	resetDB := flag.Bool("rst", false, "Reset the database before starting")
 
-	err := os.Remove("./db.db")
-	if err != nil {
-		log.Println(err)
+	// Customize the usage message
+	flag.Usage = func() {
+		usageText := `
+Usage: dt-geo-workflow-converter [options]
+
+Options:
+`
+		fmt.Fprint(flag.CommandLine.Output(), usageText)
+		flag.PrintDefaults()
+		fmt.Println(`
+Description:
+  This program initializes a database, imports data from CSV files,
+  generates a workflow graph based on the specified workflow ID,
+  and saves the graph to files.
+`)
+	}
+
+	// Parse the command-line flags
+	flag.Parse()
+
+	// Initialize the logger
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	// Check if the database exists
+	dbExists := false
+	if _, err := os.Stat(*dbFile); err == nil {
+		dbExists = true
+	} else if !os.IsNotExist(err) {
+		// An error other than "file does not exist" occurred
+		log.Fatalf("Error checking database file %s: %v", *dbFile, err)
+	}
+
+	// Reset the database if requested and it exists
+	if *resetDB && dbExists {
+		if err := resetDatabase(*dbFile); err != nil {
+			log.Fatalf("Failed to reset database: %v", err)
+		}
+		dbExists = false // Database has been reset
 	}
 
 	// Open the database
-	db, err := sql.Open("sqlite3", "./db.db")
+	db, err := sql.Open("sqlite3", *dbFile)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to open database %s: %v", *dbFile, err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("Error closing database: %v", err)
+		}
+	}()
 
+	// Initialize the database if it doesn't exist or was reset
+	if !dbExists {
+		if err := initializeDatabase(db, *workPackage); err != nil {
+			log.Fatalf("Failed to initialize database: %v", err)
+		}
+		fmt.Println("Database created and CSV data imported successfully")
+	} else {
+		fmt.Println("Using existing database")
+	}
+
+	// Generate the workflow graph
+	if err := processWorkflow(db, *workflowID); err != nil {
+		log.Fatalf("Failed to process workflow: %v", err)
+	}
+
+	fmt.Println("Workflow graph generated and saved successfully")
+}
+
+// resetDatabase removes the existing database file.
+func resetDatabase(dbFile string) error {
+	if err := os.Remove(dbFile); err != nil {
+		return fmt.Errorf("error removing database file %s: %w", dbFile, err)
+	}
+	log.Printf("Database file %s removed successfully", dbFile)
+	return nil
+}
+
+// initializeDatabase creates tables and imports data from CSV files.
+func initializeDatabase(db *sql.DB, workPackage string) error {
 	// Create tables
-	err = createTables(db)
-	if err != nil {
-		log.Fatal(err)
+	if err := createTables(db); err != nil {
+		return fmt.Errorf("error creating tables: %w", err)
 	}
 
 	// Import data from CSV files
-	err = importDataFromCSV(db, wp)
+	if err := importDataFromCSV(db, workPackage); err != nil {
+		return fmt.Errorf("error importing data from CSV for work package %s: %w", workPackage, err)
+	}
+
+	return nil
+}
+
+// processWorkflow generates the workflow graph and saves it to files.
+func processWorkflow(db *sql.DB, workflowID string) error {
+	workflow, err := implicit.GetWorkflowGraph(workflowID, db)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("error getting workflow graph for ID %s: %w", workflowID, err)
 	}
 
-	fmt.Println("Database created and CSV data imported successfully")
-
-	// get all workflows ids from the db
-	wfs, err := GetWorkflows(db)
-
-	for _, wf := range wfs {
-		path := "workflows/" + wp + "/" + wf + "/"
-
-		gr, err := cwl.GetWorkflowExecutionOrder(db, wf, path)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = os.MkdirAll(path, os.ModePerm)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		file, err := os.Create(path + "steps.dot")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer file.Close()
-
-		_ = draw.DOT(gr, file)
+	if err := workflow.SaveToFile(db); err != nil {
+		return fmt.Errorf("error saving workflow to file: %w", err)
 	}
 
-	test, err := implicit.GetWorkflowGraph("WF5201", db)
-	if err != nil {
-		panic(err)
-	}
-	err = test.SaveToFile(db)
-	if err != nil {
-		panic(err)
-	}
+	return nil
 }
 
 func createTables(db *sql.DB) error {
@@ -258,24 +307,4 @@ func insertWF(db *sql.DB, filename string) error {
 	}
 
 	return nil
-}
-
-func GetWorkflows(db *sql.DB) ([]string, error) {
-	rows, err := db.Query("SELECT name FROM WF")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var workflows []string
-	for rows.Next() {
-		var name string
-		err = rows.Scan(&name)
-		if err != nil {
-			return nil, err
-		}
-		workflows = append(workflows, name)
-	}
-
-	return workflows, nil
 }
