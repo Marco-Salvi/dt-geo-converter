@@ -1,0 +1,17 @@
+DT5101,is output from,SS5103
+DT5101,simultaneous,SS5102
+DT5101,previous to,SS5107
+DT5101,previous to,SS5114
+DT5102,part of,SS5107
+DT5103,simultaneous,SS5102
+DT5103,previous to,SS5109
+DT5104,previous to,SS5102
+DT5104,simultaneous,SS5111
+DT5105,used with,SS5107
+DT5106,part of,SS5114
+DT5107,used with,SS5109
+DT5108,previous to,SS5111
+DT5109,part of,SS5111
+DT5110,cooperate,SS5114
+DT5111,after,SS5107
+DT5111,previous to,SS5114

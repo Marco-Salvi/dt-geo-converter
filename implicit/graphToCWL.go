@@ -66,8 +66,8 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 	}
 
 	// build the objects for the cwl inputs and outputs
-	for dt, dtSource := range inputs {
-		cwlInputs[dt] = cwl.IOType(dtSource)
+	for dt := range inputs {
+		cwlInputs[dt] = cwl.Directory
 	}
 	for dt, dtSource := range outputs {
 		cwlOutputs[dt] = cwl.Output{
@@ -113,6 +113,10 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 			default:
 				log.Printf("Unknown relationship type when converting to CWL (DT-ST): %s", relationship.RelationshipType)
 			}
+		}
+
+		if len(stepInputs) == 0 && len(stepOutputs) == 0 {
+			log.Printf("WARNING: %s has no inputs and no outputs, are you sure it is correct?", step.Id)
 		}
 
 		steps[step.Id] = cwl.Step{
@@ -220,6 +224,10 @@ func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 			default:
 				log.Printf("Unknown relationship type when converting to CWL (DT-SS): %s", relationship.RelationshipType)
 			}
+		}
+
+		if len(stepInputs) == 0 && len(stepOutputs) == 0 {
+			log.Printf("WARNING: %s has no inputs and no outputs, are you sure it is correct?", step.Id)
 		}
 
 		steps[innerStep] = cwl.Step{

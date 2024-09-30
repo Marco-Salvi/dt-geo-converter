@@ -67,7 +67,7 @@ func main() {
 		_ = draw.DOT(gr, file)
 	}
 
-	test, err := implicit.GetWorkflowGraph("WF5301", db)
+	test, err := implicit.GetWorkflowGraph("WF5201", db)
 	if err != nil {
 		panic(err)
 	}
