@@ -166,6 +166,7 @@ func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 					Type: cwl.Directory,
 					// TODO this should be the SSID / the DTID not the STID
 					OutputSource: relationship.STID + "/" + relationship.DTID,
+					//OutputSource: relationship.DTID,
 				}
 			} else {
 				log.Println("Some kind of error")
@@ -219,7 +220,8 @@ func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 				stepOutputs = append(stepOutputs, relationship.DTID)
 				runOutputs[relationship.DTID] = cwl.Directory
 			case "is updated by":
-				stepOutputs = append(stepOutputs, relationship.SSID+"/"+relationship.DTID)
+				//stepOutputs = append(stepOutputs, relationship.SSID+"/"+relationship.DTID)
+				stepOutputs = append(stepOutputs, relationship.DTID)
 				runOutputs[relationship.DTID] = cwl.Directory
 			default:
 				log.Printf("Unknown relationship type when converting to CWL (DT-SS): %s", relationship.RelationshipType)
@@ -346,12 +348,21 @@ func getDTSourceWorkflow(workflow Workflow, dt string) (string, error) {
 		break
 	}
 
-	if len(predecessors) > 1 {
+	adjacencyMap, err := workflow.Graph.AdjacencyMap()
+	if err != nil {
+		return "", err
+	}
+	if len(predecessors) > 1 && len(adjacencyMap[dt]) > 0 {
 		predecessorsList := make([]string, len(predecessors))
 		for k := range predecessors {
 			predecessorsList = append(predecessorsList, k)
 		}
-		log.Printf("WARNING: %s is generated from multiple SSs %s, choosing one at random (this is something that has to be fixed in the spreadsheet description)", dt, predecessorsList)
+		log.Printf("WARNING: %s is generated from multiple STs %s, choosing one at random (this is something that has to be fixed in the spreadsheet description)", dt, predecessorsList)
+		successorsList := make([]string, len(adjacencyMap[dt]))
+		for k := range adjacencyMap[dt] {
+			successorsList = append(successorsList, k)
+		}
+		log.Printf("%s", successorsList)
 	}
 
 	return predecessor, nil

@@ -24,8 +24,8 @@ type Output struct {
 // Step represents a step in the CWL workflow.
 type Step struct {
 	Run any               `yaml:"run,omitempty"` // TODO find a better way to represent both Run and string objects instead of any
-	In  map[string]string `yaml:"in,omitempty"`
-	Out []string          `yaml:"out,omitempty"`
+	In  map[string]string `yaml:"in"`
+	Out []string          `yaml:"out"`
 }
 
 // Run represents the run section of a step.

@@ -3,6 +3,7 @@ package implicit
 import (
 	"database/sql"
 	"dt-geo-db/orms"
+	"dt-geo-db/rocrate"
 	"github.com/dominikbraun/graph"
 	"github.com/dominikbraun/graph/draw"
 	"log"
@@ -259,6 +260,14 @@ func (w *Workflow) SaveToFile(db *sql.DB) error {
 	err = cwl.SaveToFile(path + w.Name + ".cwl")
 	if err != nil {
 		log.Printf("Error saving dot to file")
+		return err
+	}
+	crate, err := rocrate.WorkflowToRoCrate(w.Name, cwl, db)
+	if err != nil {
+		return err
+	}
+	err = crate.SaveToFile(path + "ro-crate-metadata.json")
+	if err != nil {
 		return err
 	}
 

@@ -1,9 +1,6 @@
 ST510101,is part of,WF5101
 ST510102,is part of,WF5101
 ST510103,is part of,WF5101
-ST510104,is part of,WF5101
-ST510105,is part of,WF5101
-ST510106,is part of,WF5101
 ST510107,is part of,WF5101
 ST510108,is part of,WF5101
 ST510109,is part of,WF5101
@@ -35,7 +32,7 @@ ST540101,is part of,WF5401
 ST540102,is part of,WF5401
 ST540103,is part of,WF5401
 ST540104,is part of,WF5401
-ST540105,is part of,WF5401
+ST540205,is part of,WF5401
 ST610101,is part of,WF6101
 ST610102,is part of,WF6101
 ST610103,is part of,WF6101
