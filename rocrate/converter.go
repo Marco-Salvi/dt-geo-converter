@@ -127,6 +127,15 @@ func WorkflowToRoCrate(wf string, cwl cwl.Cwl, db *sql.DB) (RoCrate, error) {
 	})
 
 	//TODO SoftwareApplication
+	for _, step := range steps {
+		graph = append(graph, SoftwareApplication{
+			ID:              step.ID,
+			Type:            "SoftwareApplication",
+			Name:            "TODO",
+			Description:     "TODO",
+			SoftwareVersion: "TODO",
+		})
+	}
 
 	//Datasets
 	for _, dataset := range datasets {

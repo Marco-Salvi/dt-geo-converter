@@ -1,0 +1,5 @@
+2024/10/01 17:04:11 graphToCWL.go:328: WARNING: DT5201 is generated from multiple SSs [               SS5202 SS5210 SS5203 SS5211 SS5204 SS5213 SS5214 SS5207 SS5201 SS5208 SS5206 SS5205 SS5215 SS5212 SS5209], choosing one at random (this is something that has to be fixed in the spreadsheet description)
+2024/10/01 17:04:11 graphToCWL.go:360: WARNING: DT5209 is generated from multiple STs [  ST520115 ST520116], choosing one at random (this is something that has to be fixed in the spreadsheet description)
+
+2024/10/01 17:04:11 graphToCWL.go:119: WARNING: ST520117 has no inputs and no outputs, are you sure it is correct?
+2024/10/01 17:04:11 graphToCWL.go:119: WARNING: ST520112 has no inputs and no outputs, are you sure it is correct?
