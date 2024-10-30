@@ -3,7 +3,6 @@ package rocrate
 import (
 	"dt-geo-db/cwl"
 	"log"
-	"strings"
 )
 
 func GenerateRoCrate(wf string, originalCwl cwl.Cwl) (RoCrate, error) {
@@ -113,13 +112,17 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 	}
 
 	// add the computationalworkflowfile item
+	workflowInputsMap := make(map[string]string)
 	var workflowInputs []IDRef
+	workflowOutputsMap := make(map[string]string)
 	var workflowOutputs []IDRef
 	for s := range originalCwl.Inputs {
-		workflowInputs = append(workflowInputs, IDRef{"#" + s})
+		workflowInputsMap[s] = "#" + s + "->" + wf
+		workflowInputs = append(workflowInputs, IDRef{workflowInputsMap[s]})
 	}
 	for s := range originalCwl.Outputs {
-		workflowOutputs = append(workflowOutputs, IDRef{"#" + s})
+		workflowOutputsMap[s] = "#" + wf + "->" + s
+		workflowOutputs = append(workflowOutputs, IDRef{workflowOutputsMap[s]})
 	}
 
 	*rocrate = append(*rocrate, ComputationalWorkflowFile{
@@ -134,35 +137,35 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 	})
 
 	// add formal parameters for each input and output
-	for _, param := range workflowInputs {
-		if parameterExists(*rocrate, param.ID) {
-			log.Printf("Parameter with id: %s, already exists", param.ID)
+	for id, param := range workflowInputsMap {
+		if parameterExists(*rocrate, param) {
+			log.Printf("Parameter with id: %s, already exists", param)
 			continue
 		}
 		*rocrate = append(*rocrate, FormalParameter{
-			ID:             param.ID,
+			ID:             param,
 			Type:           "FormalParameter",
 			AdditionalType: "Dataset",
 			ConformsTo:     IDRef{"https://bioschemas.org/profiles/FormalParameter/1.0-RELEASE"},
 			Description:    "TODO",
-			WorkExample:    IDRef{strings.ReplaceAll(param.ID, "#", "")},
-			Name:           strings.ReplaceAll(param.ID, "#", ""),
+			WorkExample:    IDRef{id},
+			Name:           id,
 			ValueRequired:  true,
 		})
 	}
-	for _, param := range workflowOutputs {
-		if parameterExists(*rocrate, param.ID) {
-			log.Printf("Parameter with id: %s, already exists", param.ID)
+	for id, param := range workflowOutputsMap {
+		if parameterExists(*rocrate, param) {
+			log.Printf("Parameter with id: %s, already exists", param)
 			continue
 		}
 		*rocrate = append(*rocrate, FormalParameter{
-			ID:             param.ID,
+			ID:             param,
 			Type:           "FormalParameter",
 			AdditionalType: "Dataset",
 			ConformsTo:     IDRef{"https://bioschemas.org/profiles/FormalParameter/1.0-RELEASE"},
 			Description:    "TODO",
-			WorkExample:    IDRef{strings.ReplaceAll(param.ID, "#", "")},
-			Name:           strings.ReplaceAll(param.ID, "#", ""),
+			WorkExample:    IDRef{id},
+			Name:           id,
 			ValueRequired:  true,
 		})
 	}
@@ -174,7 +177,7 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 			if err != nil {
 				return err
 			}
-			err = addWorkflowToRoCrate(rocrate, strings.ReplaceAll(sw, ".cwl", ""), subWorkflowCwl)
+			err = addWorkflowToRoCrate(rocrate, sw, subWorkflowCwl)
 			if err != nil {
 				return err
 			}
