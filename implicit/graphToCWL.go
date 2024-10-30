@@ -8,7 +8,7 @@ import (
 )
 
 func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
-	cwlInputs := make(map[string]cwl.IOType)
+	cwlInputs := make(map[string]any)
 	cwlOutputs := make(map[string]cwl.Output)
 	steps := make(map[string]cwl.Step)
 
@@ -67,7 +67,7 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 
 	// build the objects for the cwl inputs and outputs
 	for dt := range inputs {
-		cwlInputs[dt] = cwl.Directory
+		cwlInputs[dt] = cwl.Input{Type: cwl.Directory}
 	}
 	for dt, dtSource := range outputs {
 		cwlOutputs[dt] = cwl.Output{
@@ -139,7 +139,7 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 }
 
 func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
-	inputs := make(map[string]cwl.IOType)
+	inputs := make(map[string]any)
 	outputs := make(map[string]cwl.Output)
 	steps := make(map[string]cwl.Step)
 

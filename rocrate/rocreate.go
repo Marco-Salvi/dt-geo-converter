@@ -66,22 +66,27 @@ type ComputerLanguage struct {
 	URL        string `json:"url"`
 }
 
-type SoftwareApplication struct {
-	ID              string `json:"@id"`
-	Type            string `json:"@type"`
-	Name            string `json:"name"`
-	Description     string `json:"description"`
-	SoftwareVersion string `json:"softwareVersion"`
+type SoftwareSourceCode struct {
+	ID                  string `json:"@id"`
+	Type                string `json:"@type"`
+	Name                string `json:"name"`
+	Description         string `json:"description"`
+	Author              IDRef  `json:"author"`
+	License             string `json:"license"`
+	ProgrammingLanguage string `json:"programmingLanguage"`
+	Url                 string `json:"url,omitempty"`
+	// SoftwareVersion string `json:"softwareVersion"`
 }
 
 type DatasetDetails struct {
-	ID            string `json:"@id"`
-	Type          string `json:"@type"`
-	Name          string `json:"name"`
-	Abstract      string `json:"abstract"`
-	URL           string `json:"url"`
-	Author        IDRef  `json:"author"`
-	ExampleOfWork IDRef  `json:"exampleOfWork"`
+	ID       string `json:"@id"`
+	Type     string `json:"@type"`
+	Name     string `json:"name"`
+	Abstract string `json:"abstract,omitempty"`
+	URL      string `json:"url"`
+	// need to be a pointer to make omitempty work correctly
+	Author        *IDRef `json:"author,omitempty"`
+	ExampleOfWork *IDRef `json:"exampleOfWork,omitempty"`
 }
 
 type Person struct {
@@ -98,7 +103,7 @@ type Organization struct {
 }
 
 type IDRef struct {
-	ID string `json:"@id"`
+	ID string `json:"@id,omitempty"`
 }
 
 func (r RoCrate) SaveToFile(name string) error {

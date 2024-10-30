@@ -2,67 +2,147 @@ package main
 
 import (
 	"database/sql"
+	"dt-geo-db/cwl"
 	"dt-geo-db/implicit"
+	"dt-geo-db/rocrate"
 	"encoding/csv"
 	"flag"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"os"
 	"strings"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
-	// Define command-line flags
-	dbFile := flag.String("db", "./db.db", "Path to the database file")
-	workflowID := flag.String("wf", "WF5201", "Workflow ID to process")
-	workPackage := flag.String("wp", "wp5", "Work package identifier")
-	resetDB := flag.Bool("rst", false, "Reset the database before starting")
+	// Ensure a subcommand is provided
+	if len(os.Args) < 2 {
+		fmt.Println("Expected 'convert' or 'generate-ro-crate' subcommands")
+		os.Exit(1)
+	}
 
-	// Customize the usage message
-	flag.Usage = func() {
-		usageText := `
-Usage: dt-geo-workflow-converter [options]
+	switch os.Args[1] {
+	case "convert":
+		convertCmd := flag.NewFlagSet("convert", flag.ExitOnError)
+		dbFile := convertCmd.String("db", "./db.db", "Path to the database file")
+		workflowID := convertCmd.String("wf", "WF5201", "Workflow ID to process")
+		workPackage := convertCmd.String("wp", "wp5", "Work package identifier")
+		resetDB := convertCmd.Bool("rst", false, "Reset the database before starting")
+
+		// Customize the usage message for 'convert'
+		convertCmd.Usage = func() {
+			usageText := `
+Usage: dt-geo-workflow-converter convert [options]
 
 Options:
 `
-		fmt.Fprint(flag.CommandLine.Output(), usageText)
-		flag.PrintDefaults()
-		fmt.Println(`
+			fmt.Fprint(convertCmd.Output(), usageText)
+			convertCmd.PrintDefaults()
+			fmt.Println(`
 Description:
-  This program initializes a database, imports data from CSV files,
+  This subcommand initializes a database, imports data from CSV files,
   generates a workflow graph based on the specified workflow ID,
   and saves the graph to files.
 `)
+		}
+
+		// Parse flags for 'convert' subcommand
+		err := convertCmd.Parse(os.Args[2:])
+		if err != nil {
+			log.Fatalf("Error parsing flags for 'convert': %v", err)
+		}
+
+		// Initialize the logger
+		log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+		// Rest of your 'convert' logic
+		runConvert(*dbFile, *workflowID, *workPackage, *resetDB)
+
+	case "generate-ro-crate":
+		generateCmd := flag.NewFlagSet("generate-ro-crate", flag.ExitOnError)
+		cwlFilePath := generateCmd.String("cwl", "", "Path to the CWL file")
+		workflowName := generateCmd.String("name", "", "Name of the workflow")
+
+		// Customize the usage message for 'generate-ro-crate'
+		generateCmd.Usage = func() {
+			usageText := `
+Usage: dt-geo-workflow-converter generate-ro-crate -cwl <path_to_cwl_file> -name <workflow_name>
+
+Options:
+`
+			fmt.Fprint(generateCmd.Output(), usageText)
+			generateCmd.PrintDefaults()
+			fmt.Println(`
+Description:
+  This subcommand generates an RO-Crate metadata package from a specified CWL file.
+`)
+		}
+
+		// Parse flags for 'generate-ro-crate' subcommand
+		err := generateCmd.Parse(os.Args[2:])
+		if err != nil {
+			log.Fatalf("Error parsing flags for 'generate-ro-crate': %v", err)
+		}
+
+		if *cwlFilePath == "" {
+			fmt.Println("Please provide a path to the CWL file using -cwl flag")
+			generateCmd.Usage()
+			os.Exit(1)
+		}
+
+		if *workflowName == "" {
+			fmt.Println("Please provide the name of the workflow using -name flag")
+			generateCmd.Usage()
+			os.Exit(1)
+		}
+
+		// Implement the logic to generate RO-Crate from the CWL file
+		cwl, err := cwl.ImportCWL(*cwlFilePath)
+		if err != nil {
+			log.Fatalf("Failed to import CWL file: %v", err)
+		}
+
+		ro, err := rocrate.GenerateRoCrate(*workflowName, cwl)
+		if err != nil {
+			log.Fatalf("Failed to generate RO-Crate: %v", err)
+		}
+		fmt.Println("RO-Crate generated successfully")
+
+		err = ro.SaveToFile("ro-crate-metadata.json")
+		if err != nil {
+			log.Fatalf("Error saving RO-Crate to file: %v", err)
+		}
+
+	default:
+		fmt.Printf("Unknown subcommand '%s'\n", os.Args[1])
+		os.Exit(1)
 	}
+}
 
-	// Parse the command-line flags
-	flag.Parse()
-
-	// Initialize the logger
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
+// Function to handle the 'convert' subcommand logic
+func runConvert(dbFile, workflowID, workPackage string, resetDB bool) {
 	// Check if the database exists
 	dbExists := false
-	if _, err := os.Stat(*dbFile); err == nil {
+	if _, err := os.Stat(dbFile); err == nil {
 		dbExists = true
 	} else if !os.IsNotExist(err) {
 		// An error other than "file does not exist" occurred
-		log.Fatalf("Error checking database file %s: %v", *dbFile, err)
+		log.Fatalf("Error checking database file %s: %v", dbFile, err)
 	}
 
 	// Reset the database if requested and it exists
-	if *resetDB && dbExists {
-		if err := resetDatabase(*dbFile); err != nil {
+	if resetDB && dbExists {
+		if err := resetDatabase(dbFile); err != nil {
 			log.Fatalf("Failed to reset database: %v", err)
 		}
 		dbExists = false // Database has been reset
 	}
 
 	// Open the database
-	db, err := sql.Open("sqlite3", *dbFile)
+	db, err := sql.Open("sqlite3", dbFile)
 	if err != nil {
-		log.Fatalf("Failed to open database %s: %v", *dbFile, err)
+		log.Fatalf("Failed to open database %s: %v", dbFile, err)
 	}
 	defer func() {
 		if err := db.Close(); err != nil {
@@ -72,7 +152,7 @@ Description:
 
 	// Initialize the database if it doesn't exist or was reset
 	if !dbExists {
-		if err := initializeDatabase(db, *workPackage); err != nil {
+		if err := initializeDatabase(db, workPackage); err != nil {
 			log.Fatalf("Failed to initialize database: %v", err)
 		}
 		fmt.Println("Database created and CSV data imported successfully")
@@ -81,7 +161,7 @@ Description:
 	}
 
 	// Generate the workflow graph
-	if err := processWorkflow(db, *workflowID); err != nil {
+	if err := processWorkflow(db, workflowID); err != nil {
 		log.Fatalf("Failed to process workflow: %v", err)
 	}
 
