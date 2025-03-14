@@ -5,7 +5,7 @@ The CWL Converter CLI tool allows you to convert CSV files from spreadsheets int
 ## Installation
 
 1. **Download the Binary:**  
-   Grab the binary for your platform from the [releases](./releases) section.
+   Grab the binary for your platform from the [releases](https://github.com/Marco-Salvi/dt-geo-db/releases) section.
 
 2. **Prepare Your CSV Files:**  
    Create a directory containing the CSV files exported from your spreadsheets. Ensure you remove any content that isn’t part of the relationships. Refer to the examples in the repository for guidance: [example](./wp5).
