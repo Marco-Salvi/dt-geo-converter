@@ -16,6 +16,7 @@ jobs:
         platform:
           - { os: "linux", goos: "linux", goarch: "amd64", ext: "" }
           - { os: "macos", goos: "darwin", goarch: "amd64", ext: "" }
+          - { os: "macos-arm64", goos: "darwin", goarch: "arm64", ext: "" }
           - { os: "windows", goos: "windows", goarch: "amd64", ext: ".exe" }
     steps:
       - name: Checkout Code
@@ -24,20 +25,42 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24" # adjust to your required Go version
+          go-version: "1.24"
 
       - name: Build Binary for ${{ matrix.platform.os }}
         env:
           GOOS: ${{ matrix.platform.goos }}
           GOARCH: ${{ matrix.platform.goarch }}
         run: |
-          go build -o dt-geo-converter${{ matrix.platform.ext }} .  # adjust the build command as needed
+          # Build with a unique name that includes the OS to avoid collisions
+          go build -o dt-geo-converter-${{ matrix.platform.os }}${{ matrix.platform.ext }} .
 
-      - name: Upload Binary for ${{ matrix.platform.os }}
+      - name: Upload Artifact for ${{ matrix.platform.os }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dt-geo-converter-${{ matrix.platform.os }}
+          path: dt-geo-converter-${{ matrix.platform.os }}${{ matrix.platform.ext }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: .
+
+      - name: Create GitHub Release and Upload Binaries
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: dt-geo-converter${{ matrix.platform.ext }}
-          name: dt-geo-converter-${{ matrix.platform.os }}${{ matrix.platform.ext }}
+          # When triggering on tag pushes, github.ref holds "refs/tags/<tag>"
+          tag_name: ${{ github.ref }}
+          # Optionally, set a custom release title if desired:
+          name: "Release ${{ github.ref }}"
+          files: |
+            dt-geo-converter-linux
+            dt-geo-converter-macos
+            dt-geo-converter-macos-arm64
+            dt-geo-converter-windows.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
