@@ -1,9 +1,8 @@
-name: Build Go CLI Tool for Multiple Platforms
+name: Build and Release Go CLI Tool for Multiple Platforms
 
 on:
-  push:
-    tags:
-      - "*"
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -21,17 +20,20 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.24" # adjust to your required Go version
 
       - name: Build Binary for ${{ matrix.platform.os }}
         env:
           GOOS: ${{ matrix.platform.goos }}
           GOARCH: ${{ matrix.platform.goarch }}
         run: |
-          go build -o dt-geo-converter${{ matrix.platform.ext }} .
+          go build -o dt-geo-converter${{ matrix.platform.ext }} .  # adjust the build command as needed
 
-      - name: Upload Binary Artifact for ${{ matrix.platform.os }}
-        uses: actions/upload-artifact@v4
+      - name: Upload Binary for ${{ matrix.platform.os }}
+        uses: softprops/action-gh-release@v2
         with:
-          name: dt-geo-converter-${{ matrix.platform.os }}
-          path: dt-geo-converter${{ matrix.platform.ext }}
+          tag_name: ${{ github.event.release.tag_name }}
+          files: dt-geo-converter${{ matrix.platform.ext }}
+          name: dt-geo-converter-${{ matrix.platform.os }}${{ matrix.platform.ext }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
