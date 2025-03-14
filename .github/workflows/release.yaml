@@ -50,22 +50,15 @@ jobs:
         with:
           path: .
 
-      - name: Move binaries to root
-        run: |
-          mv dt-geo-converter-linux/dt-geo-converter-linux .
-          mv dt-geo-converter-macos/dt-geo-converter-macos .
-          mv dt-geo-converter-macos-arm64/dt-geo-converter-macos-arm64 .
-          mv dt-geo-converter-windows/dt-geo-converter-windows.exe .
-
       - name: Create GitHub Release and Upload Binaries
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref }}
           name: "Release ${{ github.ref }}"
           files: |
-            dt-geo-converter-linux
-            dt-geo-converter-macos
-            dt-geo-converter-macos-arm64
-            dt-geo-converter-windows.exe
+            dt-geo-converter-linux/dt-geo-converter-linux
+            dt-geo-converter-macos/dt-geo-converter-macos
+            dt-geo-converter-macos-arm64/dt-geo-converter-macos-arm64
+            dt-geo-converter-windows/dt-geo-converter-windows.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
