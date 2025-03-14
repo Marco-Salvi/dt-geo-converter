@@ -203,7 +203,7 @@ func (w *Workflow) SaveToFile(db *sql.DB) error {
 		return err
 	}
 
-	path := "workflows/implicit/" + w.Name + "/"
+	path := "workflows/" + w.Name + "/"
 	for _, vertex := range vertices {
 		if vertex.Graph == nil {
 			continue

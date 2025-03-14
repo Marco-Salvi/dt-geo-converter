@@ -16,24 +16,31 @@ import (
 )
 
 func main() {
+	// Check for help flag first
+	if len(os.Args) > 1 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
+		printMainHelp()
+		return
+	}
+
 	// Ensure a subcommand is provided
 	if len(os.Args) < 2 {
 		fmt.Println("Expected 'convert' or 'generate-ro-crate' subcommands")
+		fmt.Println("Run 'dt-geo-converter --help' for usage information")
 		os.Exit(1)
 	}
 
 	switch os.Args[1] {
 	case "convert":
 		convertCmd := flag.NewFlagSet("convert", flag.ExitOnError)
-		dbFile := convertCmd.String("db", "./db.db", "Path to the database file")
+		dbFile := convertCmd.String("db", "./db.db", "Path to the database file, if it does not exist, it will be created")
 		workflowID := convertCmd.String("wf", "WF5201", "Workflow ID to process")
 		workPackage := convertCmd.String("wp", "wp5", "Work package identifier")
-		resetDB := convertCmd.Bool("rst", false, "Reset the database before starting")
+		resetDB := convertCmd.Bool("rst", false, "Whether to reset the database before starting (necessary if changed the data in the csv)")
 
 		// Customize the usage message for 'convert'
 		convertCmd.Usage = func() {
 			usageText := `
-Usage: dt-geo-workflow-converter convert [options]
+Usage: dt-geo-converter convert [options]
 
 Options:
 `
@@ -41,20 +48,23 @@ Options:
 			convertCmd.PrintDefaults()
 			fmt.Println(`
 Description:
-  This subcommand initializes a database, imports data from CSV files,
-  generates a workflow graph based on the specified workflow ID,
-  and saves the graph to files.
+  This subcommand initializes a database, imports data from CSV files and it then generates an in-memoy graph of the workflow that is used to generate CWL files description, .dot files for the graphs and a ro-crate-metadata template.
+  The tool has logging to warn the user when the imported description from the spreadsheets has some problems. It is IMPORTANT to look at the logging to see what is wrong.
+  It will generate separate .cwl and .dot files for each step of the original workflow.
+  The generated CWL files will probably have to be reviewed to ensure a correct workflow representation. In general the syntax should already be correct.
+  The .dot files can be visualized using a web tool like https://dreampuf.github.io/GraphvizOnline. Can be very useful to understand the CWL workflow even if it is not correct.
+  The generated ro-crate-metadata.json file will include the necessary objects that are used in the CWL workflow, but will need to be reviewed to add the necesary metadata.
 `)
 		}
+
+		// Initialize the logger
+		log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 		// Parse flags for 'convert' subcommand
 		err := convertCmd.Parse(os.Args[2:])
 		if err != nil {
 			log.Fatalf("Error parsing flags for 'convert': %v", err)
 		}
-
-		// Initialize the logger
-		log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 		// Rest of your 'convert' logic
 		runConvert(*dbFile, *workflowID, *workPackage, *resetDB)
@@ -67,7 +77,7 @@ Description:
 		// Customize the usage message for 'generate-ro-crate'
 		generateCmd.Usage = func() {
 			usageText := `
-Usage: dt-geo-workflow-converter generate-ro-crate -cwl <path_to_cwl_file> -name <workflow_name>
+Usage: dt-geo-converter generate-ro-crate -cwl <path_to_cwl_file> -name <workflow_name>
 
 Options:
 `
@@ -116,8 +126,28 @@ Description:
 
 	default:
 		fmt.Printf("Unknown subcommand '%s'\n", os.Args[1])
+		fmt.Println("Run 'dt-geo-workflow-converter --help' for usage information")
 		os.Exit(1)
 	}
+}
+
+// printMainHelp prints the help information for the base CLI
+func printMainHelp() {
+	helpText := `
+Usage:
+  dt-geo-converter <command> [options]
+
+Commands:
+  convert            Initialize database, import data, and generate CWL workflow graphs
+  generate-ro-crate  Generate RO-Crate metadata package template from a CWL file
+
+Options:
+  --help, -h         Show this help message
+
+For more information on a specific command, run:
+  dt-geo-converter <command> --help
+`
+	fmt.Println(helpText)
 }
 
 // Function to handle the 'convert' subcommand logic
