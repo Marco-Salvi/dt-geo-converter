@@ -1,0 +1,40 @@
+name: Build Go CLI Tool for Multiple Platforms
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform:
+          - { os: "linux", goos: "linux", goarch: "amd64", ext: "" }
+          - { os: "macos", goos: "darwin", goarch: "amd64", ext: "" }
+          - { os: "windows", goos: "windows", goarch: "amd64", ext: ".exe" }
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.24'  # adjust to your required Go version
+
+      - name: Build Binary for ${{ matrix.platform.os }}
+        env:
+          GOOS: ${{ matrix.platform.goos }}
+          GOARCH: ${{ matrix.platform.goarch }}
+        run: |
+          go build -o dt-geo-converter${{ matrix.platform.ext }} .  # adjust the build command
+
+      - name: Upload Binary Artifact for ${{ matrix.platform.os }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: mycli-tool-${{ matrix.platform.os }}
+          path: mycli-tool${{ matrix.platform.ext }}
