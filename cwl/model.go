@@ -20,7 +20,8 @@ type Cwl struct {
 // Output represents an output in the CWL workflow.
 type Output struct {
 	Type         IOType `yaml:"type"`
-	OutputSource string `yaml:"outputSource"`
+	OutputSource any    `yaml:"outputSource"`
+	LinkMerge    string `yaml:"linkMerge,omitempty"`
 }
 
 // Step represents a step in the CWL workflow.
@@ -48,6 +49,7 @@ type Input struct {
 const (
 	Directory IOType = "Directory"
 	File      IOType = "File"
+	FileArray IOType = "File[]"
 )
 
 func (c Cwl) SaveToFile(name string) error {

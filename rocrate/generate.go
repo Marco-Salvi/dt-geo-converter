@@ -247,14 +247,14 @@ func getAllDTs(cwl cwl.Cwl) []string {
 	}
 
 	// for each step add all the input and output datasets used in the step
-	for _, st := range cwl.Steps {
-		for dt := range st.In {
-			dts[dt] = true
-		}
-		for _, dt := range st.Out {
-			dts[dt] = true
-		}
-	}
+	// for _, st := range cwl.Steps {
+	// 	for dt := range st.In {
+	// 		dts[dt] = true
+	// 	}
+	// 	for _, dt := range st.Out {
+	// 		dts[dt] = true
+	// 	}
+	// }
 
 	datasets := make([]string, 0, len(dts))
 	for k := range dts {

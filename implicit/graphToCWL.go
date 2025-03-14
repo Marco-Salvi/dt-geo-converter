@@ -72,7 +72,7 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 	for dt, dtSource := range outputs {
 		cwlOutputs[dt] = cwl.Output{
 			Type:         cwl.Directory,
-			OutputSource: dtSource,
+			OutputSource: []any{dtSource},
 		}
 	}
 
@@ -165,7 +165,7 @@ func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 				outputs[relationship.DTID] = cwl.Output{
 					Type: cwl.Directory,
 					// TODO this should be the SSID / the DTID not the STID
-					OutputSource: relationship.STID + "/" + relationship.DTID,
+					OutputSource: []any{relationship.STID + "/" + relationship.DTID},
 					//OutputSource: relationship.DTID,
 				}
 			} else {
@@ -209,7 +209,7 @@ func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 			if ok {
 				outputs[relationship.DTID] = cwl.Output{
 					Type:         cwl.Directory,
-					OutputSource: stepInput,
+					OutputSource: []any{stepInput},
 				}
 			}
 			switch relationship.RelationshipType {
@@ -265,7 +265,7 @@ func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 			if ok {
 				outputs[relationship.DTID] = cwl.Output{
 					Type:         cwl.Directory,
-					OutputSource: stepInput,
+					OutputSource: []any{stepInput},
 				}
 			}
 			switch relationship.RelationshipType {
