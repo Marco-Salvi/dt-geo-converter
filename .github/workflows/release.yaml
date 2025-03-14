@@ -32,7 +32,7 @@ jobs:
           GOOS: ${{ matrix.platform.goos }}
           GOARCH: ${{ matrix.platform.goarch }}
         run: |
-          # Build with a unique name that includes the OS to avoid collisions
+          # Build the binary with a unique name per platform
           go build -o dt-geo-converter-${{ matrix.platform.os }}${{ matrix.platform.ext }} .
 
       - name: Upload Artifact for ${{ matrix.platform.os }}
@@ -50,12 +50,17 @@ jobs:
         with:
           path: .
 
+      - name: Move binaries to root
+        run: |
+          mv dt-geo-converter-linux/dt-geo-converter-linux .
+          mv dt-geo-converter-macos/dt-geo-converter-macos .
+          mv dt-geo-converter-macos-arm64/dt-geo-converter-macos-arm64 .
+          mv dt-geo-converter-windows/dt-geo-converter-windows.exe .
+
       - name: Create GitHub Release and Upload Binaries
         uses: softprops/action-gh-release@v2
         with:
-          # When triggering on tag pushes, github.ref holds "refs/tags/<tag>"
           tag_name: ${{ github.ref }}
-          # Optionally, set a custom release title if desired:
           name: "Release ${{ github.ref }}"
           files: |
             dt-geo-converter-linux
