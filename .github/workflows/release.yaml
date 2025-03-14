@@ -34,7 +34,7 @@ jobs:
           go build -o dt-geo-converter${{ matrix.platform.ext }} .  # adjust the build command
 
       - name: Upload Binary Artifact for ${{ matrix.platform.os }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mycli-tool-${{ matrix.platform.os }}
           path: mycli-tool${{ matrix.platform.ext }}
