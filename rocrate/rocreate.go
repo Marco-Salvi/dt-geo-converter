@@ -107,7 +107,7 @@ type IDRef struct {
 }
 
 func (r RoCrate) SaveToFile(name string) error {
-	v, err := json.Marshal(r)
+	v, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return err
 	}

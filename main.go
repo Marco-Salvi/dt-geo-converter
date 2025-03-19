@@ -34,7 +34,7 @@ func main() {
 		convertCmd := flag.NewFlagSet("convert", flag.ExitOnError)
 		dbFile := convertCmd.String("db", "./db.db", "Path to the database file, if it does not exist, it will be created")
 		workflowID := convertCmd.String("wf", "WF5201", "Workflow ID to process")
-		workPackage := convertCmd.String("wp", "wp5", "Work package identifier")
+		// workPackage := convertCmd.String("wp", "wp5", "Work package identifier")
 		resetDB := convertCmd.Bool("rst", false, "Whether to reset the database before starting (necessary if changed the data in the csv)")
 
 		// Customize the usage message for 'convert'
@@ -66,8 +66,10 @@ Description:
 			log.Fatalf("Error parsing flags for 'convert': %v", err)
 		}
 
-		// Rest of your 'convert' logic
-		runConvert(*dbFile, *workflowID, *workPackage, *resetDB)
+		// infer the work package from the workflow id
+		workPackage := (*workflowID)[0:3]
+		workPackage = strings.ReplaceAll(workPackage, "WF", "wp")
+		runConvert(*dbFile, *workflowID, workPackage, *resetDB)
 
 	case "generate-ro-crate":
 		generateCmd := flag.NewFlagSet("generate-ro-crate", flag.ExitOnError)
@@ -306,17 +308,18 @@ func createTables(db *sql.DB) error {
 	return nil
 }
 
-func importDataFromCSV(db *sql.DB, folder string) error {
+func importDataFromCSV(db *sql.DB, dir string) error {
+	dir = strings.ToLower(dir)
 	// Import relationship data using the generic function
 	relationships := map[string]string{
-		"WF_WF": folder + "/wf_wf.csv",
-		"ST_ST": folder + "/st_st.csv",
-		"SS_SS": folder + "/ss_ss.csv",
-		"DT_DT": folder + "/dt_dt.csv",
-		"SS_ST": folder + "/ss_st.csv",
-		"ST_WF": folder + "/st_wf.csv",
-		"DT_ST": folder + "/dt_st.csv",
-		"DT_SS": folder + "/dt_ss.csv",
+		"WF_WF": dir + "/wf_wf.csv",
+		"ST_ST": dir + "/st_st.csv",
+		"SS_SS": dir + "/ss_ss.csv",
+		"DT_DT": dir + "/dt_dt.csv",
+		"SS_ST": dir + "/ss_st.csv",
+		"ST_WF": dir + "/st_wf.csv",
+		"DT_ST": dir + "/dt_st.csv",
+		"DT_SS": dir + "/dt_ss.csv",
 	}
 
 	for table, file := range relationships {
@@ -327,7 +330,7 @@ func importDataFromCSV(db *sql.DB, folder string) error {
 		}
 	}
 
-	err := insertWF(db, folder+"/wf.csv")
+	err := insertWF(db, dir+"/wf.csv")
 	if err != nil {
 		return err
 	}
