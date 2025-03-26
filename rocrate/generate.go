@@ -2,13 +2,16 @@ package rocrate
 
 import (
 	"dt-geo-db/cwl"
-	"log"
+	"dt-geo-db/logger"
 )
 
+// GenerateRoCrate creates a RO-Crate metadata package from the given CWL.
 func GenerateRoCrate(wf string, originalCwl cwl.Cwl) (RoCrate, error) {
 	var graph []any
 
-	// metadata object
+	logger.Info("Starting RO-Crate generation for workflow", wf)
+
+	// Add metadata objects.
 	graph = append(graph, Metadata{
 		ID:         "ro-crate-metadata.json",
 		Type:       "CreativeWork",
@@ -21,21 +24,18 @@ func GenerateRoCrate(wf string, originalCwl cwl.Cwl) (RoCrate, error) {
 		Name:    "Process Run Crate",
 		Version: "0.4",
 	})
-
 	graph = append(graph, CreativeWork{
 		ID:      "https://w3id.org/ro/wfrun/workflow/0.4",
 		Type:    "CreativeWork",
 		Name:    "Workflow Run Crate",
 		Version: "0.4",
 	})
-
 	graph = append(graph, CreativeWork{
 		ID:      "https://w3id.org/workflowhub/workflow-ro-crate/1.0",
 		Type:    "CreativeWork",
 		Name:    "Workflow RO-Crate",
 		Version: "1.0",
 	})
-
 	graph = append(graph, ComputerLanguage{
 		ID:         "https://w3id.org/workflowhub/workflow-ro-crate#cwl",
 		Type:       "ComputerLanguage",
@@ -43,15 +43,12 @@ func GenerateRoCrate(wf string, originalCwl cwl.Cwl) (RoCrate, error) {
 		Name:       "Common Workflow Language",
 		URL:        "https://www.commonwl.org/",
 	})
-
-	// add an organization template
+	// Add organization and person templates.
 	graph = append(graph, Organization{
 		ID:   "TODO: this is just a template. You can copy-paste this template to have more than one in the RO-Crate",
 		Type: "Organization",
 		Name: "TODO",
 	})
-
-	// add a person template
 	graph = append(graph, Person{
 		ID:          "TODO: this is just a template. You can copy-paste this template to have more than one in the RO-Crate",
 		Type:        "Person",
@@ -59,21 +56,26 @@ func GenerateRoCrate(wf string, originalCwl cwl.Cwl) (RoCrate, error) {
 		Affiliation: IDRef{"TODO"},
 	})
 
+	// Add workflow and related items.
+	logger.Debug("Adding workflow details to RO-Crate")
 	err := addWorkflowToRoCrate(&graph, wf, originalCwl)
 	if err != nil {
+		logger.Error("Error adding workflow to RO-Crate:", err)
 		return RoCrate{}, err
 	}
 
+	logger.Info("RO-Crate generation completed successfully")
 	return RoCrate{
 		Context: "https://w3id.org/ro/crate/1.1/context",
 		Graph:   graph,
 	}, nil
 }
 
+// addWorkflowToRoCrate adds the workflow and its parts to the RO-Crate graph.
 func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error {
 	datasets := getAllDTs(originalCwl)
 
-	// check if the rocrate already has an item with the ./ id
+	// Check if the RO-Crate already has a workflow item (with id "./").
 	hasWorkflow := false
 	for _, item := range *rocrate {
 		if _, ok := item.(Workflow); ok {
@@ -81,23 +83,22 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 			break
 		}
 	}
-	// if there is no item with the ./ id then add it, else skip it
 	if !hasWorkflow {
+		logger.Debug("Workflow item not found in RO-Crate. Adding workflow item for", wf)
 		var workflowHasPart []IDRef
 		workflowHasPart = append(workflowHasPart, IDRef{wf})
-
 		for _, dataset := range datasets {
 			workflowHasPart = append(workflowHasPart, IDRef{dataset})
 		}
 		for id, step := range originalCwl.Steps {
 			if s, ok := step.Run.(string); ok {
-				// the step is a sub-workflow
 				workflowHasPart = append(workflowHasPart, IDRef{s})
+				logger.Debug("Detected sub-workflow step:", s)
 			} else {
 				workflowHasPart = append(workflowHasPart, IDRef{id})
+				logger.Debug("Adding step:", id)
 			}
 		}
-
 		*rocrate = append(*rocrate, Workflow{
 			ID:          "./",
 			Type:        "Dataset",
@@ -105,13 +106,20 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 			Description: "TODO",
 			License:     "TODO",
 			Author:      IDRef{"TODO"},
-			ConformsTo:  []IDRef{{"https://w3id.org/ro/wfrun/process/0.4"}, {"https://w3id.org/ro/wfrun/workflow/0.4"}, {"https://w3id.org/workflowhub/workflow-ro-crate/1.0"}},
-			HasPart:     workflowHasPart,
-			MainEntity:  IDRef{wf},
+			ConformsTo: []IDRef{
+				{"https://w3id.org/ro/wfrun/process/0.4"},
+				{"https://w3id.org/ro/wfrun/workflow/0.4"},
+				{"https://w3id.org/workflowhub/workflow-ro-crate/1.0"},
+			},
+			HasPart:    workflowHasPart,
+			MainEntity: IDRef{wf},
 		})
+		logger.Info("Workflow item added to RO-Crate")
+	} else {
+		logger.Debug("Workflow item already exists in RO-Crate. Skipping addition.")
 	}
 
-	// add the computationalworkflowfile item
+	// Add the computational workflow file item.
 	workflowInputsMap := make(map[string]string)
 	var workflowInputs []IDRef
 	workflowOutputsMap := make(map[string]string)
@@ -119,12 +127,13 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 	for s := range originalCwl.Inputs {
 		workflowInputsMap[s] = "#" + s + "->" + wf
 		workflowInputs = append(workflowInputs, IDRef{workflowInputsMap[s]})
+		logger.Debug("Mapping input dataset", s, "to", workflowInputsMap[s])
 	}
 	for s := range originalCwl.Outputs {
 		workflowOutputsMap[s] = "#" + wf + "->" + s
 		workflowOutputs = append(workflowOutputs, IDRef{workflowOutputsMap[s]})
+		logger.Debug("Mapping output dataset", s, "to", workflowOutputsMap[s])
 	}
-
 	*rocrate = append(*rocrate, ComputationalWorkflowFile{
 		ID:                  wf,
 		Type:                []string{"File", "SoftwareSourceCode", "ComputationalWorkflow"},
@@ -135,11 +144,12 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 		Input:               workflowInputs,
 		Output:              workflowOutputs,
 	})
+	logger.Info("ComputationalWorkflowFile item added for workflow", wf)
 
-	// add formal parameters for each input and output
+	// Add formal parameters for each input and output.
 	for id, param := range workflowInputsMap {
 		if parameterExists(*rocrate, param) {
-			log.Printf("Parameter with id: %s, already exists", param)
+			logger.Debug("Formal parameter", param, "already exists. Skipping.")
 			continue
 		}
 		*rocrate = append(*rocrate, FormalParameter{
@@ -152,10 +162,11 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 			Name:           id,
 			ValueRequired:  true,
 		})
+		logger.Debug("Added formal parameter for input", id)
 	}
 	for id, param := range workflowOutputsMap {
 		if parameterExists(*rocrate, param) {
-			log.Printf("Parameter with id: %s, already exists", param)
+			logger.Debug("Formal parameter", param, "already exists. Skipping.")
 			continue
 		}
 		*rocrate = append(*rocrate, FormalParameter{
@@ -168,21 +179,26 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 			Name:           id,
 			ValueRequired:  true,
 		})
+		logger.Debug("Added formal parameter for output", id)
 	}
 
-	// add a softwaresourcecode item for each step of the workflow, if the step is a sub-workflow, call this function recursively
+	// Add a SoftwareSourceCode item for each step.
 	for id, step := range originalCwl.Steps {
 		if sw, ok := step.Run.(string); ok {
+			logger.Info("Processing sub-workflow step", id, "with CWL file", sw)
 			subWorkflowCwl, err := cwl.ImportCWL(sw)
 			if err != nil {
+				logger.Error("Error importing sub-workflow CWL for", sw, ":", err)
 				return err
 			}
 			err = addWorkflowToRoCrate(rocrate, sw, subWorkflowCwl)
 			if err != nil {
+				logger.Error("Error adding sub-workflow", sw, "to RO-Crate:", err)
 				return err
 			}
 		} else {
 			if sscExists(*rocrate, id) {
+				logger.Debug("SoftwareSourceCode item for", id, "already exists. Skipping.")
 				continue
 			}
 			*rocrate = append(*rocrate, SoftwareSourceCode{
@@ -195,16 +211,16 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 				ProgrammingLanguage: "TODO",
 				Url:                 "TODO: add the url to the software definition from the EPOS APIs",
 			})
+			logger.Debug("Added SoftwareSourceCode item for step", id)
 		}
 	}
 
-	//Datasets
+	// Add DatasetDetails items.
 	for _, dataset := range datasets {
-		// if the dataset already exist don't add it again
 		if datasetExists(*rocrate, dataset) {
+			logger.Debug("Dataset", dataset, "already exists. Skipping.")
 			continue
 		}
-
 		paramPresent := false
 		for _, item := range *rocrate {
 			if param, ok := item.(FormalParameter); ok && param.ID == "#"+dataset {
@@ -220,6 +236,7 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 				URL:           "TODO",
 				ExampleOfWork: &IDRef{"#" + dataset},
 			})
+			logger.Debug("Added DatasetDetails (with formal parameter) for dataset", dataset)
 		} else {
 			*rocrate = append(*rocrate, DatasetDetails{
 				ID:   dataset,
@@ -227,48 +244,39 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 				Name: "TODO",
 				URL:  "TODO",
 			})
+			logger.Debug("Added DatasetDetails for dataset", dataset)
 		}
 	}
 
 	return nil
 }
 
-// get all the dts for this workflow
-func getAllDTs(cwl cwl.Cwl) []string {
+// getAllDTs returns a list of all dataset IDs found in the CWL.
+func getAllDTs(cwlObj cwl.Cwl) []string {
 	dts := make(map[string]bool)
-
-	// add the global inputs
-	for dt := range cwl.Inputs {
+	// Global inputs.
+	for dt := range cwlObj.Inputs {
 		dts[dt] = true
 	}
-	// add the global outputs
-	for dt := range cwl.Outputs {
+	// Global outputs.
+	for dt := range cwlObj.Outputs {
 		dts[dt] = true
 	}
-
-	// for each step add all the input and output datasets used in the step
-	// for _, st := range cwl.Steps {
-	// 	for dt := range st.In {
-	// 		dts[dt] = true
-	// 	}
-	// 	for _, dt := range st.Out {
-	// 		dts[dt] = true
-	// 	}
-	// }
-
 	datasets := make([]string, 0, len(dts))
 	for k := range dts {
 		datasets = append(datasets, k)
 	}
+	logger.Debug("Collected", len(datasets), "datasets from CWL")
 	return datasets
 }
 
-// get all the steps for this workflow
-func getAllSTs(cwl cwl.Cwl) []string {
-	sts := make([]string, 0, len(cwl.Steps))
-	for k := range cwl.Steps {
+// getAllSTs returns a list of all step IDs in the CWL.
+func getAllSTs(cwlObj cwl.Cwl) []string {
+	sts := make([]string, 0, len(cwlObj.Steps))
+	for k := range cwlObj.Steps {
 		sts = append(sts, k)
 	}
+	logger.Debug("Collected", len(sts), "steps from CWL")
 	return sts
 }
 

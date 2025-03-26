@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"dt-geo-db/cwl"
 	"dt-geo-db/implicit"
+	"dt-geo-db/logger"
 	"dt-geo-db/rocrate"
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -43,9 +43,12 @@ func main() {
 
 	// Initialize the logger based on the debug flag
 	if debug {
-		log.SetFlags(log.LstdFlags | log.Lshortfile)
-		log.Println("Debug mode enabled")
+		// Retain short file and date/time flags for debug mode
+		// (Assuming the logger wrapper honors the standard log flags.)
+		logger.DebugEnabled = true
+		logger.Info("Debug mode enabled")
 	}
+
 	switch os.Args[1] {
 	case "convert":
 		convertCmd := flag.NewFlagSet("convert", flag.ExitOnError)
@@ -63,23 +66,19 @@ Options:
 			convertCmd.PrintDefaults()
 			fmt.Println(`
 Description:
-  This subcommand initializes a database, imports data from CSV files and it then generates an in-memory graph of the workflow that is used to generate CWL files description, .dot files for the graphs and a ro-crate-metadata template.
-  The tool has logging to warn the user when the imported description from the spreadsheets has some problems. It is IMPORTANT to look at the logging to see what is wrong.
-  It will generate separate .cwl and .dot files for each step of the original workflow.
-  The generated CWL files will probably have to be reviewed to ensure a correct workflow representation. In general the syntax should already be correct.
-  The .dot files can be visualized using a web tool like https://dreampuf.github.io/GraphvizOnline. Can be very useful to understand the CWL workflow even if it is not correct.
-  The generated ro-crate-metadata.json file will include the necessary objects that are used in the CWL workflow, but will need to be reviewed to add the necessary metadata.
+  This subcommand initializes a database, imports data from CSV files and then generates an in-memory graph of the workflow that is used to generate CWL file descriptions, .dot files for the graphs, and an RO-Crate metadata template.
+  Please review the generated logs carefully to see if the imported description has any issues.
 `)
 		}
 
-		err := convertCmd.Parse(os.Args[2:])
-		if err != nil {
-			log.Fatalf("Error parsing flags for 'convert': %v", err)
+		if err := convertCmd.Parse(os.Args[2:]); err != nil {
+			logger.Fatal("Error parsing flags for 'convert':", err)
 		}
 
 		// Infer the work package from the workflow id
 		workPackage := (*workflowID)[0:3]
 		workPackage = strings.ReplaceAll(workPackage, "WF", "wp")
+		logger.Info("Running conversion for workflow", *workflowID, "with work package", workPackage)
 		runConvert(*dbFile, *workflowID, workPackage, *resetDB)
 
 	case "generate-ro-crate":
@@ -101,9 +100,8 @@ Description:
 `)
 		}
 
-		err := generateCmd.Parse(os.Args[2:])
-		if err != nil {
-			log.Fatalf("Error parsing flags for 'generate-ro-crate': %v", err)
+		if err := generateCmd.Parse(os.Args[2:]); err != nil {
+			logger.Fatal("Error parsing flags for 'generate-ro-crate':", err)
 		}
 
 		if *cwlFilePath == "" {
@@ -118,25 +116,26 @@ Description:
 			os.Exit(1)
 		}
 
-		cwl, err := cwl.ImportCWL(*cwlFilePath)
+		logger.Info("Importing CWL file from", *cwlFilePath)
+		cwlObj, err := cwl.ImportCWL(*cwlFilePath)
 		if err != nil {
-			log.Fatalf("Failed to import CWL file: %v", err)
+			logger.Fatal("Failed to import CWL file:", err)
 		}
 
-		ro, err := rocrate.GenerateRoCrate(*workflowName, cwl)
+		logger.Info("Generating RO-Crate for workflow", *workflowName)
+		ro, err := rocrate.GenerateRoCrate(*workflowName, cwlObj)
 		if err != nil {
-			log.Fatalf("Failed to generate RO-Crate: %v", err)
+			logger.Fatal("Failed to generate RO-Crate:", err)
 		}
-		fmt.Println("RO-Crate generated successfully")
+		logger.Info("RO-Crate generated successfully")
 
-		err = ro.SaveToFile("ro-crate-metadata.json")
-		if err != nil {
-			log.Fatalf("Error saving RO-Crate to file: %v", err)
+		if err := ro.SaveToFile("ro-crate-metadata.json"); err != nil {
+			logger.Fatal("Error saving RO-Crate to file:", err)
 		}
 
 	default:
 		fmt.Printf("Unknown subcommand '%s'\n", os.Args[1])
-		fmt.Println("Run 'dt-geo-workflow-converter --help' for usage information")
+		fmt.Println("Run 'dt-geo-converter --help' for usage information")
 		os.Exit(1)
 	}
 }
@@ -162,19 +161,21 @@ For more information on a specific command, run:
 
 // Function to handle the 'convert' subcommand logic
 func runConvert(dbFile, workflowID, workPackage string, resetDB bool) {
+	logger.Info("Starting conversion process...")
 	// Check if the database exists
 	dbExists := false
 	if _, err := os.Stat(dbFile); err == nil {
 		dbExists = true
+		logger.Debug("Database file", dbFile, "exists")
 	} else if !os.IsNotExist(err) {
-		// An error other than "file does not exist" occurred
-		log.Fatalf("Error checking database file %s: %v", dbFile, err)
+		logger.Fatal("Error checking database file", dbFile, ":", err)
 	}
 
 	// Reset the database if requested and it exists
 	if resetDB && dbExists {
+		logger.Info("Reset flag detected. Resetting database", dbFile)
 		if err := resetDatabase(dbFile); err != nil {
-			log.Fatalf("Failed to reset database: %v", err)
+			logger.Fatal("Failed to reset database:", err)
 		}
 		dbExists = false // Database has been reset
 	}
@@ -182,30 +183,35 @@ func runConvert(dbFile, workflowID, workPackage string, resetDB bool) {
 	// Open the database
 	db, err := sql.Open("sqlite3", dbFile)
 	if err != nil {
-		log.Fatalf("Failed to open database %s: %v", dbFile, err)
+		logger.Fatal("Failed to open database", dbFile, ":", err)
 	}
+	logger.Debug("Opened database", dbFile)
 	defer func() {
 		if err := db.Close(); err != nil {
-			log.Printf("Error closing database: %v", err)
+			logger.Error("Error closing database:", err)
+		} else {
+			logger.Debug("Database closed successfully")
 		}
 	}()
 
 	// Initialize the database if it doesn't exist or was reset
 	if !dbExists {
+		logger.Info("Initializing database and importing CSV data")
 		if err := initializeDatabase(db, workPackage); err != nil {
-			log.Fatalf("Failed to initialize database: %v", err)
+			logger.Fatal("Failed to initialize database:", err)
 		}
-		fmt.Println("Database created and CSV data imported successfully")
+		logger.Debug("Database created and CSV data imported successfully")
 	} else {
-		fmt.Println("Using existing database")
+		logger.Debug("Using existing database", dbFile)
 	}
 
 	// Generate the workflow graph
+	logger.Info("Processing workflow graph for", workflowID)
 	if err := processWorkflow(db, workflowID); err != nil {
-		log.Fatalf("Failed to process workflow: %v", err)
+		logger.Fatal("Failed to process workflow:", err)
 	}
-
-	fmt.Println("Workflow graph generated and saved successfully")
+	logger.Info("Workflow graph generated and saved successfully")
+	logger.Info("Conversion process completed successfully")
 }
 
 // resetDatabase removes the existing database file.
@@ -213,18 +219,19 @@ func resetDatabase(dbFile string) error {
 	if err := os.Remove(dbFile); err != nil {
 		return fmt.Errorf("error removing database file %s: %w", dbFile, err)
 	}
-	log.Printf("Database file %s removed successfully", dbFile)
+	logger.Info("Database file", dbFile, "removed successfully")
 	return nil
 }
 
 // initializeDatabase creates tables and imports data from CSV files.
 func initializeDatabase(db *sql.DB, workPackage string) error {
-	// Create tables
+	logger.Debug("Creating tables in the database")
 	if err := createTables(db); err != nil {
 		return fmt.Errorf("error creating tables: %w", err)
 	}
+	logger.Debug("Tables created successfully")
 
-	// Import data from CSV files
+	logger.Info("Importing CSV data for work package", workPackage)
 	if err := importDataFromCSV(db, workPackage); err != nil {
 		return fmt.Errorf("error importing data from CSV for work package %s: %w", workPackage, err)
 	}
@@ -234,11 +241,13 @@ func initializeDatabase(db *sql.DB, workPackage string) error {
 
 // processWorkflow generates the workflow graph and saves it to files.
 func processWorkflow(db *sql.DB, workflowID string) error {
+	logger.Info("Loading workflow graph for ID", workflowID)
 	workflow, err := implicit.GetWorkflowGraph(workflowID, db)
 	if err != nil {
 		return fmt.Errorf("error getting workflow graph for ID %s: %w", workflowID, err)
 	}
 
+	logger.Debug("Saving workflow graph to file")
 	if err := workflow.SaveToFile(db); err != nil {
 		return fmt.Errorf("error saving workflow to file: %w", err)
 	}
@@ -307,10 +316,10 @@ func createTables(db *sql.DB) error {
 	}
 
 	for _, schema := range schemas {
-		_, err := db.Exec(schema)
-		if err != nil {
+		if _, err := db.Exec(schema); err != nil {
 			return err
 		}
+		logger.Debug("Executed schema:", schema)
 	}
 
 	return nil
@@ -318,7 +327,6 @@ func createTables(db *sql.DB) error {
 
 func importDataFromCSV(db *sql.DB, dir string) error {
 	dir = strings.ToLower(dir)
-	// Import relationship data using the generic function
 	relationships := map[string]string{
 		"WF_WF": dir + "/wf_wf.csv",
 		"ST_ST": dir + "/st_st.csv",
@@ -331,15 +339,13 @@ func importDataFromCSV(db *sql.DB, dir string) error {
 	}
 
 	for table, file := range relationships {
-		log.Println("importing table: " + file)
-		err := importFromCSV(db, table, file)
-		if err != nil {
+		logger.Info("Importing table from file:", file)
+		if err := importFromCSV(db, table, file); err != nil {
 			return err
 		}
 	}
 
-	err := insertWF(db, dir+"/wf.csv")
-	if err != nil {
+	if err := insertWF(db, dir+"/wf.csv"); err != nil {
 		return err
 	}
 
@@ -363,6 +369,7 @@ func importFromCSV(db *sql.DB, tableName, filename string) error {
 	}
 	defer stmt.Close()
 
+	logger.Debug("Inserting rows into table", tableName)
 	for {
 		row, err := reader.Read()
 		if err != nil {
@@ -371,26 +378,24 @@ func importFromCSV(db *sql.DB, tableName, filename string) error {
 
 		id1, id2, relType := row[0], row[2], row[1]
 
-		// clean the data
+		// Clean the data
 		if id1 == "" || id2 == "" || relType == "" {
 			continue
 		}
-		// remove trailing spaces
 		id1 = strings.Trim(id1, " ")
 		id2 = strings.Trim(id2, " ")
 		relType = strings.Trim(relType, " ")
 
-		_, err = stmt.Exec(id1, relType, id2)
-		if err != nil {
-			fmt.Println("Error inserting row:", row)
+		if _, err = stmt.Exec(id1, relType, id2); err != nil {
+			logger.Error("Error inserting row:", row)
 			return err
 		}
 	}
 
+	logger.Debug("Finished importing data for table", tableName)
 	return nil
 }
 
-// insert wf data
 func insertWF(db *sql.DB, filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -399,7 +404,6 @@ func insertWF(db *sql.DB, filename string) error {
 	defer file.Close()
 
 	reader := csv.NewReader(file)
-
 	query := "INSERT INTO WF (name, description, author) VALUES (?, ?, ?)"
 	stmt, err := db.Prepare(query)
 	if err != nil {
@@ -407,6 +411,7 @@ func insertWF(db *sql.DB, filename string) error {
 	}
 	defer stmt.Close()
 
+	logger.Debug("Inserting workflow data from", filename)
 	for {
 		row, err := reader.Read()
 		if err != nil {
@@ -414,18 +419,16 @@ func insertWF(db *sql.DB, filename string) error {
 		}
 
 		name, description, author := row[0], row[1], row[2]
-
-		// remove trailing spaces
 		name = strings.Trim(name, " ")
 		description = strings.Trim(description, " ")
 		author = strings.Trim(author, " ")
 
-		_, err = stmt.Exec(name, description, author)
-		if err != nil {
-			fmt.Println("Error inserting row:", row)
+		if _, err = stmt.Exec(name, description, author); err != nil {
+			logger.Error("Error inserting row:", row)
 			return err
 		}
 	}
 
+	logger.Debug("Workflow data imported successfully from", filename)
 	return nil
 }
