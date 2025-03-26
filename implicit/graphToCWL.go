@@ -116,7 +116,7 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 		}
 
 		if len(stepInputs) == 0 && len(stepOutputs) == 0 {
-			log.Printf("WARNING: %s has no inputs and no outputs, are you sure it is correct?", step.Id)
+			log.Printf("WARNING: %s has no inputs and no outputs, are you sure it's correct?", step.Id)
 		}
 
 		steps[step.Id] = cwl.Step{
@@ -229,7 +229,7 @@ func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 		}
 
 		if len(stepInputs) == 0 && len(stepOutputs) == 0 {
-			log.Printf("WARNING: %s has no inputs and no outputs, are you sure it is correct?", step.Id)
+			log.Printf("WARNING: %s has no inputs and no outputs, are you sure it's correct?", step.Id)
 		}
 
 		steps[innerStep] = cwl.Step{

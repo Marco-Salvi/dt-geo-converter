@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"dt-geo-db/orms"
 	"dt-geo-db/rocrate"
-	"github.com/dominikbraun/graph"
-	"github.com/dominikbraun/graph/draw"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/dominikbraun/graph"
+	"github.com/dominikbraun/graph/draw"
 )
 
 // Workflow represents the complete workflow, its graph is the structure of the workflow, with each node being a Step
@@ -132,7 +133,7 @@ func generateStepGraph(step orms.ST, db *sql.DB) (Step, error) {
 		}
 	}
 
-	//get all the dt-ss relationships for this step
+	// get all the dt-ss relationships for this step
 	relationships, err := orms.GetDTSSRelationshipsForST(db, step.ID)
 	if err != nil {
 		return Step{}, err
