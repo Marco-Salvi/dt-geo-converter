@@ -31,7 +31,7 @@ func stepHash(st Step) string {
 }
 
 func GetWorkflowGraph(wf string, db *sql.DB) (Workflow, error) {
-	logger.Info("Creating main workflow graph for", wf)
+	logger.Debug("Creating main workflow graph for", wf)
 	g := graph.New(stepHash, graph.Directed(), graph.PreventCycles())
 
 	steps, err := model.GetSTsForWF(db, wf)
@@ -111,7 +111,7 @@ func GetWorkflowGraph(wf string, db *sql.DB) (Workflow, error) {
 					logger.Debug("Added edge", relationship.STID, "->", relationship.DTID, "in main graph")
 				}
 			default:
-				logger.Error("Unknown relationship type:", relationship.RelationshipType)
+				logger.Error("Unknown DT_ST relationship type:", relationship.RelationshipType)
 			}
 		}
 	}
@@ -125,7 +125,7 @@ func GetWorkflowGraph(wf string, db *sql.DB) (Workflow, error) {
 
 // generateStepGraph generates the subgraph for a step.
 func generateStepGraph(step model.ST, db *sql.DB) (Step, error) {
-	logger.Info("Generating subgraph for step", step.ID)
+	logger.Debug("Generating subgraph for step", step.ID)
 	g := graph.New(graph.StringHash, graph.Directed(), graph.PreventCycles())
 
 	// Get all the SS for this ST.
@@ -216,7 +216,7 @@ func generateStepGraph(step model.ST, db *sql.DB) (Step, error) {
 					logger.Error("Error adding edge", relationship.STID, "->", relationship.DTID, "in manual step subgraph", step.ID, ":", err)
 				}
 			default:
-				logger.Error("Unknown relationship type:", relationship.RelationshipType)
+				logger.Error("Unknown DT_ST relationship type:", relationship.RelationshipType)
 			}
 		}
 	}
@@ -244,11 +244,11 @@ func generateStepGraph(step model.ST, db *sql.DB) (Step, error) {
 				logger.Debug("Added edge", relationship.SSID, "->", relationship.DTID, "in subgraph", step.ID)
 			}
 		default:
-			logger.Error("Unknown relationship type:", relationship.RelationshipType)
+			logger.Error("Unknown SS_DT relationship type:", relationship.RelationshipType)
 		}
 	}
 
-	logger.Info("Subgraph generated for step", step.ID)
+	logger.Debug("Subgraph generated for step", step.ID)
 	return Step{
 		Id:    step.ID,
 		Graph: g,
@@ -286,7 +286,7 @@ func (w *Workflow) SaveToFile(db *sql.DB) error {
 			return err
 		}
 		file.Close()
-		logger.Info("Saved DOT file for vertex", vertex.Id)
+		logger.Debug("Saved DOT file for vertex", vertex.Id)
 
 		cwlObj, err := StepToCWL(vertex, db)
 		if err != nil {
@@ -298,7 +298,7 @@ func (w *Workflow) SaveToFile(db *sql.DB) error {
 			logger.Error("Error saving CWL file for vertex", vertex.Id, ":", err)
 			return err
 		}
-		logger.Info("Saved CWL file for vertex", vertex.Id)
+		logger.Debug("Saved CWL file for vertex", vertex.Id)
 	}
 
 	file, err := os.Create(path + "steps.dot")
@@ -324,7 +324,7 @@ func (w *Workflow) SaveToFile(db *sql.DB) error {
 		logger.Error("Error saving workflow CWL file", path+w.Name+".cwl", ":", err)
 		return err
 	}
-	logger.Info("Saved workflow CWL file", path+w.Name+".cwl")
+	logger.Debug("Saved workflow CWL file", path+w.Name+".cwl")
 
 	crate, err := rocrate.WorkflowToRoCrate(w.Name, cwlObj, db)
 	if err != nil {
@@ -336,7 +336,7 @@ func (w *Workflow) SaveToFile(db *sql.DB) error {
 		logger.Error("Error saving RO-Crate metadata file", path+"ro-crate-metadata.json", ":", err)
 		return err
 	}
-	logger.Info("Saved RO-Crate metadata file", path+"ro-crate-metadata.json")
+	logger.Debug("Saved RO-Crate metadata file", path+"ro-crate-metadata.json")
 
 	return nil
 }

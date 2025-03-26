@@ -178,7 +178,7 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 	}
 	if multipleSourcesFound {
 		reqs["MultipleInputFeatureRequirement"] = map[string]string{}
-		logger.Info("MultipleInputFeatureRequirement added to CWL requirements")
+		logger.Debug("MultipleInputFeatureRequirement added to CWL requirements")
 	}
 
 	logger.Debug("WorkflowToCWL completed for workflow", workflow.Name)

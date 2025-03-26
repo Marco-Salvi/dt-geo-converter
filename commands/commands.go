@@ -311,8 +311,14 @@ func importFromCSV(db *sql.DB, tableName, filename string) error {
 			continue
 		}
 		if _, err = stmt.Exec(id1, relType, id2); err != nil {
-			logger.Error("Error inserting row:", row)
-			return err
+			// Check if the error is due to a duplicate record.
+			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+				logger.Warning("Duplicate record encountered in", tableName, "skipping row:", row)
+				continue
+			} else {
+				logger.Error("Error inserting row:", row, "error:", err)
+				return err
+			}
 		}
 	}
 	logger.Debug("Finished importing data for table", tableName)
@@ -349,8 +355,13 @@ func insertWF(db *sql.DB, filename string) error {
 		author := strings.TrimSpace(row[2])
 
 		if _, err = stmt.Exec(name, description, author); err != nil {
-			logger.Error("Error inserting row:", row)
-			return err
+			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+				logger.Warning("Duplicate workflow record encountered, skipping row:", row)
+				continue
+			} else {
+				logger.Error("Error inserting row:", row, "error:", err)
+				return err
+			}
 		}
 	}
 	logger.Debug("Workflow data imported successfully from", filename)
@@ -359,6 +370,15 @@ func insertWF(db *sql.DB, filename string) error {
 
 // processWorkflow generates the workflow graph and saves it to files.
 func processWorkflow(db *sql.DB, workflowID string) error {
+	// Set up logging for this conversion.
+	path := "./workflows/" + workflowID + "/log.log"
+	originalOutput, logFile, err := logger.StartCopyLogToFile(path)
+	if err != nil {
+		return err
+	}
+	// Restore the original output and close the log file when done.
+	defer logger.StopCopyLogToFile(originalOutput, logFile)
+
 	logger.Info("Loading workflow graph for ID", workflowID)
 	workflow, err := implicit.GetWorkflowGraph(workflowID, db)
 	if err != nil {
