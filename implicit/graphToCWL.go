@@ -3,24 +3,24 @@ package implicit
 import (
 	"database/sql"
 	"dt-geo-db/cwl"
-	"dt-geo-db/orms"
+	"dt-geo-db/model"
 	"log"
 )
 
+// WorkflowToCWL converts a workflow to a CWL description.
 func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 	cwlInputs := make(map[string]any)
 	cwlOutputs := make(map[string]cwl.Output)
 	steps := make(map[string]cwl.Step)
 
 	// Get the global input and outputs for this step
-	dtst, err := orms.GetDTSTRelationshipsForWF(db, workflow.Name)
+	dtst, err := model.GetDTSTRelationshipsForWF(db, workflow.Name)
 	if err != nil {
 		return cwl.Cwl{}, err
 	}
 
-	// inputs and outputs
+	// inputs and outputs maps store dtIDs that are inputs or outputs.
 	inputs, outputs := make(map[string]string), make(map[string]string)
-	// outputs are all the datasets that are output of something
 	for _, relationship := range dtst {
 		switch relationship.RelationshipType {
 		case "is input to", "is the input to", "is input from":
@@ -33,35 +33,47 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 	}
 
 	// inputs are all the datasets that are not output of anything
-	dts, err := orms.GetDTsForWF(db, workflow.Name)
+	dts, err := model.GetDTsForWF(db, workflow.Name)
 	if err != nil {
 		return cwl.Cwl{}, err
 	}
 	for _, dt := range dts {
-		_, ok := outputs[dt.ID]
-		if !ok {
+		if _, ok := outputs[dt.ID]; !ok {
 			inputs[dt.ID] = dt.ID
 		}
 	}
 
+	// To handle multiple output sources, we create a temporary map.
+	outputSources := make(map[string][]string)
+	// For conditionally adding the requirement
+	multipleSourcesFound := false
+
 	// for each dataset calculate the source
 	for _, dt := range dts {
-		datasetSource, err := getDTSourceWorkflow(workflow, dt.ID)
+		dsources, err := getDTSourceWorkflow(workflow, dt.ID)
 		if err != nil {
 			return cwl.Cwl{}, err
 		}
-		if datasetSource == "" {
+		if len(dsources) == 0 {
 			continue
 		}
 
-		_, ok := inputs[dt.ID]
-		if ok {
-			inputs[dt.ID] = datasetSource + "/" + inputs[dt.ID]
+		// For inputs, we continue to use the first available source.
+		if _, ok := inputs[dt.ID]; ok {
+			inputs[dt.ID] = dsources[0] + "/" + inputs[dt.ID]
 		}
 
-		_, ok = outputs[dt.ID]
-		if ok {
-			outputs[dt.ID] = datasetSource + "/" + outputs[dt.ID]
+		// For outputs, build a list of all sources.
+		if _, ok := outputs[dt.ID]; ok {
+			sources := []string{}
+			for _, src := range dsources {
+				sources = append(sources, src+"/"+outputs[dt.ID])
+			}
+			// If more than one source, set the flag.
+			if len(sources) > 1 {
+				multipleSourcesFound = true
+			}
+			outputSources[dt.ID] = sources
 		}
 	}
 
@@ -69,10 +81,30 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 	for dt := range inputs {
 		cwlInputs[dt] = cwl.Input{Type: cwl.Directory}
 	}
-	for dt, dtSource := range outputs {
-		cwlOutputs[dt] = cwl.Output{
-			Type:         cwl.Directory,
-			OutputSource: []any{dtSource},
+	// Build outputs: if a dt has multiple sources, change its type and add linkMerge.
+	for dt, dtValue := range outputs {
+		if sources, exists := outputSources[dt]; exists && len(sources) > 1 {
+			newType := cwl.IOType(string(cwl.Directory) + "[]")
+			cwlOutputs[dt] = cwl.Output{
+				Type:         newType,
+				OutputSource: []any{},
+				LinkMerge:    "merge_flattened",
+			}
+			tmp := cwlOutputs[dt]
+			for _, src := range sources {
+				tmp.OutputSource = append(tmp.OutputSource.([]any), src)
+			}
+			cwlOutputs[dt] = tmp
+		} else if sources, exists := outputSources[dt]; exists {
+			cwlOutputs[dt] = cwl.Output{
+				Type:         cwl.Directory,
+				OutputSource: []any{sources[0]},
+			}
+		} else {
+			cwlOutputs[dt] = cwl.Output{
+				Type:         cwl.Directory,
+				OutputSource: []any{dtValue},
+			}
 		}
 	}
 
@@ -87,20 +119,20 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 		stepInputs := make(map[string]string)
 		var stepOutputs []string
 
-		relationships, err := orms.GetDTSTRelationships(db, step.Id)
+		relationships, err := model.GetDTSTRelationships(db, step.Id)
 		if err != nil {
 			return cwl.Cwl{}, err
 		}
 
 		for _, relationship := range relationships {
-			datasetSource, err := getDTSourceWorkflow(workflow, relationship.DTID)
+			dsources, err := getDTSourceWorkflow(workflow, relationship.DTID)
 			if err != nil {
 				log.Printf("error %s", err)
 				return cwl.Cwl{}, err
 			}
 			stepInput := relationship.DTID
-			if datasetSource != "" {
-				stepInput = datasetSource + "/" + relationship.DTID
+			if len(dsources) > 0 {
+				stepInput = dsources[0] + "/" + relationship.DTID
 			}
 
 			switch relationship.RelationshipType {
@@ -126,25 +158,32 @@ func WorkflowToCWL(workflow Workflow, db *sql.DB) (cwl.Cwl, error) {
 		}
 	}
 
+	// Build the requirements map: add MultipleInputFeatureRequirement only if needed.
+	reqs := map[string]map[string]string{
+		"SubworkflowFeatureRequirement": {},
+	}
+	if multipleSourcesFound {
+		reqs["MultipleInputFeatureRequirement"] = map[string]string{}
+	}
+
 	return cwl.Cwl{
-		CWLVersion: "v1.2",
-		Class:      "Workflow",
-		Inputs:     cwlInputs,
-		Outputs:    cwlOutputs,
-		Requirements: map[string]map[string]string{
-			"SubworkflowFeatureRequirement": {},
-		},
-		Steps: steps,
+		CWLVersion:   "v1.2",
+		Class:        "Workflow",
+		Inputs:       cwlInputs,
+		Outputs:      cwlOutputs,
+		Requirements: reqs,
+		Steps:        steps,
 	}, nil
 }
 
+// StepToCWL converts a step to a CWL description.
 func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 	inputs := make(map[string]any)
 	outputs := make(map[string]cwl.Output)
 	steps := make(map[string]cwl.Step)
 
 	// Get the global input and outputs for this step
-	dtst, err := orms.GetDTSTRelationships(db, step.Id)
+	dtst, err := model.GetDTSTRelationships(db, step.Id)
 	if err != nil {
 		return cwl.Cwl{}, err
 	}
@@ -153,23 +192,28 @@ func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 	for _, relationship := range dtst {
 		switch relationship.RelationshipType {
 		case "is input to", "is the input to":
-			_, ok := inputs[relationship.DTID]
-			if !ok {
+			if _, ok := inputs[relationship.DTID]; !ok {
 				inputs[relationship.DTID] = cwl.Directory
 			} else {
 				log.Println("Some kind of error")
 			}
 		case "is output to", "is updated by", "is the output from", "is generated by", "is output from":
-			_, ok := outputs[relationship.DTID]
-			if !ok {
-				outputs[relationship.DTID] = cwl.Output{
-					Type: cwl.Directory,
-					// TODO this should be the SSID / the DTID not the STID
-					OutputSource: []any{relationship.STID + "/" + relationship.DTID},
-					//OutputSource: relationship.DTID,
+			// If an output already exists, append the new source.
+			if out, ok := outputs[relationship.DTID]; ok {
+				// If this is the first time a duplicate is found, convert type to an array.
+				if len(out.OutputSource.([]any)) == 1 {
+					out.Type = cwl.IOType(string(cwl.Directory) + "[]")
 				}
+				sources := out.OutputSource.([]any)
+				sources = append(sources, relationship.STID+"/"+relationship.DTID)
+				out.OutputSource = sources
+				out.LinkMerge = "merge_flattened"
+				outputs[relationship.DTID] = out
 			} else {
-				log.Println("Some kind of error")
+				outputs[relationship.DTID] = cwl.Output{
+					Type:         cwl.Directory,
+					OutputSource: []any{relationship.STID + "/" + relationship.DTID},
+				}
 			}
 		default:
 			log.Printf("Unknown relationship type when converting to CWL (DT-ST): %s", relationship.RelationshipType)
@@ -188,29 +232,29 @@ func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 		runInputs := make(map[string]cwl.IOType)
 		runOutputs := make(map[string]cwl.IOType)
 
-		// get the dataset dtst with this ss
-		dtss, err := orms.GetDTSSRelationshipsForSS(db, innerStep)
+		// get the dataset relationships with this inner step
+		dtss, err := model.GetDTSSRelationshipsForSS(db, innerStep)
 		if err != nil {
 			return cwl.Cwl{}, err
 		}
 		for _, relationship := range dtss {
-			datasetSource, err := getDTSource(step, relationship.DTID)
+			dsources, err := getDTSource(step, relationship.DTID)
 			if err != nil {
 				log.Printf("error %s", err)
 				return cwl.Cwl{}, err
 			}
 			stepInput := relationship.DTID
-			if datasetSource != "" {
-				stepInput = datasetSource + "/" + relationship.DTID
+			if len(dsources) > 0 {
+				stepInput = dsources[0] + "/" + relationship.DTID
 			}
 
-			// If the dataset of this relationship is in the global outputs make it so that it considers the source
-			_, ok := outputs[relationship.DTID]
-			if ok {
-				outputs[relationship.DTID] = cwl.Output{
+			// If the dataset of this relationship is in the global outputs, update its source.
+			if _, ok := outputs[relationship.DTID]; ok {
+				out := cwl.Output{
 					Type:         cwl.Directory,
 					OutputSource: []any{stepInput},
 				}
+				outputs[relationship.DTID] = out
 			}
 			switch relationship.RelationshipType {
 			case "is input to", "is the input to", "is input from":
@@ -220,7 +264,6 @@ func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 				stepOutputs = append(stepOutputs, relationship.DTID)
 				runOutputs[relationship.DTID] = cwl.Directory
 			case "is updated by":
-				//stepOutputs = append(stepOutputs, relationship.SSID+"/"+relationship.DTID)
 				stepOutputs = append(stepOutputs, relationship.DTID)
 				runOutputs[relationship.DTID] = cwl.Directory
 			default:
@@ -250,23 +293,23 @@ func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 		runOutputs := make(map[string]cwl.IOType)
 
 		for _, relationship := range dtst {
-			datasetSource, err := getDTSource(step, relationship.DTID)
+			dsources, err := getDTSource(step, relationship.DTID)
 			if err != nil {
 				log.Printf("error %s", err)
 				return cwl.Cwl{}, err
 			}
 			stepInput := relationship.DTID
-			if datasetSource != "" {
-				stepInput = datasetSource + "/" + relationship.DTID
+			if len(dsources) > 0 {
+				stepInput = dsources[0] + "/" + relationship.DTID
 			}
 
-			// If the dataset of this relationship is in the global outputs make it so that it considers the source
-			_, ok := outputs[relationship.DTID]
-			if ok {
-				outputs[relationship.DTID] = cwl.Output{
+			// If the dataset of this relationship is in the global outputs, update its source.
+			if _, ok := outputs[relationship.DTID]; ok {
+				out := cwl.Output{
 					Type:         cwl.Directory,
 					OutputSource: []any{stepInput},
 				}
+				outputs[relationship.DTID] = out
 			}
 			switch relationship.RelationshipType {
 			case "is input to", "is the input to", "is input from":
@@ -303,67 +346,58 @@ func StepToCWL(step Step, db *sql.DB) (cwl.Cwl, error) {
 	}, nil
 }
 
-func getDTSource(step Step, dt string) (string, error) {
+// getDTSource returns all the sources that generate the given dataset in a step.
+func getDTSource(step Step, dt string) ([]string, error) {
 	predecessorsMap, err := step.Graph.PredecessorMap()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	predecessors, exists := predecessorsMap[dt]
 	if !exists || len(predecessors) == 0 {
-		return "", nil
+		return nil, nil
 	}
 
-	var predecessor string
+	sources := []string{}
 	for predID := range predecessors {
-		predecessor = predID
-		break
+		sources = append(sources, predID)
 	}
 
-	if len(predecessors) > 1 {
-		predecessorsList := make([]string, len(predecessors))
-		for k := range predecessors {
-			predecessorsList = append(predecessorsList, k)
-		}
-		log.Printf("WARNING: %s is generated from multiple SSs %s, choosing one at random (this is something that has to be fixed in the spreadsheet description)", dt, predecessorsList)
-	}
+	// if len(sources) > 1 {
+	// 	log.Printf("WARNING: %s is generated from multiple SSs %v, using all sources", dt, sources)
+	// }
 
-	return predecessor, nil
+	return sources, nil
 }
 
-func getDTSourceWorkflow(workflow Workflow, dt string) (string, error) {
+// getDTSourceWorkflow returns all the sources that generate the given dataset in a workflow.
+func getDTSourceWorkflow(workflow Workflow, dt string) ([]string, error) {
 	predecessorsMap, err := workflow.Graph.PredecessorMap()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	predecessors, exists := predecessorsMap[dt]
 	if !exists || len(predecessors) == 0 {
-		return "", nil
+		return nil, nil
 	}
 
-	var predecessor string
+	sources := []string{}
 	for predID := range predecessors {
-		predecessor = predID
-		break
+		sources = append(sources, predID)
 	}
 
-	adjacencyMap, err := workflow.Graph.AdjacencyMap()
-	if err != nil {
-		return "", err
-	}
-	if len(predecessors) > 1 && len(adjacencyMap[dt]) > 0 {
-		predecessorsList := make([]string, len(predecessors))
-		for k := range predecessors {
-			predecessorsList = append(predecessorsList, k)
-		}
-		log.Printf("WARNING: %s is generated from multiple STs %s, choosing one at random (this is something that has to be fixed in the spreadsheet description)", dt, predecessorsList)
-		successorsList := make([]string, len(adjacencyMap[dt]))
-		for k := range adjacencyMap[dt] {
-			successorsList = append(successorsList, k)
-		}
-		log.Printf("%s", successorsList)
-	}
+	// if len(sources) > 1 {
+	// 	log.Printf("WARNING: %s is generated from multiple STs %v, using all sources", dt, sources)
+	// 	adjacencyMap, err := workflow.Graph.AdjacencyMap()
+	// 	if err == nil && len(adjacencyMap[dt]) > 0 {
+	// 		successorsList := []string{}
+	// 		for k := range adjacencyMap[dt] {
+	// 			successorsList = append(successorsList, k)
+	// 		}
+	// 		log.Printf("Successors: %v", successorsList)
+	// 	}
+	// }
 
-	return predecessor, nil
+	return sources, nil
 }

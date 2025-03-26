@@ -2,7 +2,7 @@ package implicit
 
 import (
 	"database/sql"
-	"dt-geo-db/orms"
+	"dt-geo-db/model"
 	"dt-geo-db/rocrate"
 	"log"
 	"os"
@@ -33,7 +33,7 @@ func stepHash(st Step) string {
 func GetWorkflowGraph(wf string, db *sql.DB) (Workflow, error) {
 	g := graph.New(stepHash, graph.Directed(), graph.PreventCycles())
 
-	steps, err := orms.GetSTsForWF(db, wf)
+	steps, err := model.GetSTsForWF(db, wf)
 	if err != nil {
 		return Workflow{}, err
 	}
@@ -51,7 +51,7 @@ func GetWorkflowGraph(wf string, db *sql.DB) (Workflow, error) {
 	}
 
 	// add the datasets to the graph
-	dts, err := orms.GetDTsForWF(db, wf)
+	dts, err := model.GetDTsForWF(db, wf)
 	if err != nil {
 		return Workflow{}, err
 	}
@@ -68,7 +68,7 @@ func GetWorkflowGraph(wf string, db *sql.DB) (Workflow, error) {
 
 	// calculate the edges
 	for _, step := range steps {
-		dtst, err := orms.GetDTSTRelationships(db, step.ID)
+		dtst, err := model.GetDTSTRelationships(db, step.ID)
 		if err != nil {
 			return Workflow{}, err
 		}
@@ -104,11 +104,11 @@ func GetWorkflowGraph(wf string, db *sql.DB) (Workflow, error) {
 }
 
 // Generate the graph for a step
-func generateStepGraph(step orms.ST, db *sql.DB) (Step, error) {
+func generateStepGraph(step model.ST, db *sql.DB) (Step, error) {
 	g := graph.New(graph.StringHash, graph.Directed(), graph.PreventCycles())
 
 	// Get all the SS for this ST
-	sss, err := orms.GetSSForST(db, step.ID)
+	sss, err := model.GetSSForST(db, step.ID)
 	if err != nil {
 		return Step{}, err
 	}
@@ -121,7 +121,7 @@ func generateStepGraph(step orms.ST, db *sql.DB) (Step, error) {
 	}
 
 	// get all the datasets used in this step
-	dts, err := orms.GetDTsRelatedToSTviaSSs(db, step.ID)
+	dts, err := model.GetDTsRelatedToSTviaSSs(db, step.ID)
 	if err != nil {
 		return Step{}, err
 	}
@@ -134,7 +134,7 @@ func generateStepGraph(step orms.ST, db *sql.DB) (Step, error) {
 	}
 
 	// get all the dt-ss relationships for this step
-	relationships, err := orms.GetDTSSRelationshipsForST(db, step.ID)
+	relationships, err := model.GetDTSSRelationshipsForST(db, step.ID)
 	if err != nil {
 		return Step{}, err
 	}
@@ -145,7 +145,7 @@ func generateStepGraph(step orms.ST, db *sql.DB) (Step, error) {
 		if err != nil {
 			log.Printf("Error adding node %s to %s subgraph", step.ID, step)
 		}
-		dtst, err := orms.GetDTSTRelationships(db, step.ID)
+		dtst, err := model.GetDTSTRelationships(db, step.ID)
 		if err != nil {
 			return Step{}, err
 		}

@@ -3,17 +3,17 @@ package rocrate
 import (
 	"database/sql"
 	"dt-geo-db/cwl"
-	"dt-geo-db/orms"
+	"dt-geo-db/model"
 	"strings"
 )
 
 func WorkflowToRoCrate(wf string, cwl cwl.Cwl, db *sql.DB) (RoCrate, error) {
-	datasets, err := orms.GetDTsForWF(db, wf)
+	datasets, err := model.GetDTsForWF(db, wf)
 	if err != nil {
 		return RoCrate{}, err
 	}
 
-	steps, err := orms.GetSTsForWF(db, wf)
+	steps, err := model.GetSTsForWF(db, wf)
 	if err != nil {
 		return RoCrate{}, err
 	}
