@@ -16,6 +16,18 @@ import (
 )
 
 func main() {
+	// Process global debug flag by scanning os.Args.
+	debug := false
+	newArgs := []string{os.Args[0]}
+	for _, arg := range os.Args[1:] {
+		if arg == "--debug" || arg == "-d" {
+			debug = true
+		} else {
+			newArgs = append(newArgs, arg)
+		}
+	}
+	os.Args = newArgs
+
 	// Check for help flag first
 	if len(os.Args) > 1 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
 		printMainHelp()
@@ -29,15 +41,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize the logger based on the debug flag
+	if debug {
+		log.SetFlags(log.LstdFlags | log.Lshortfile)
+		log.Println("Debug mode enabled")
+	}
 	switch os.Args[1] {
 	case "convert":
 		convertCmd := flag.NewFlagSet("convert", flag.ExitOnError)
 		dbFile := convertCmd.String("db", "./db.db", "Path to the database file, if it does not exist, it will be created")
 		workflowID := convertCmd.String("wf", "WF5201", "Workflow ID to process")
-		// workPackage := convertCmd.String("wp", "wp5", "Work package identifier")
 		resetDB := convertCmd.Bool("rst", false, "Whether to reset the database before starting (necessary if changed the data in the csv)")
 
-		// Customize the usage message for 'convert'
 		convertCmd.Usage = func() {
 			usageText := `
 Usage: dt-geo-converter convert [options]
@@ -48,25 +63,21 @@ Options:
 			convertCmd.PrintDefaults()
 			fmt.Println(`
 Description:
-  This subcommand initializes a database, imports data from CSV files and it then generates an in-memoy graph of the workflow that is used to generate CWL files description, .dot files for the graphs and a ro-crate-metadata template.
+  This subcommand initializes a database, imports data from CSV files and it then generates an in-memory graph of the workflow that is used to generate CWL files description, .dot files for the graphs and a ro-crate-metadata template.
   The tool has logging to warn the user when the imported description from the spreadsheets has some problems. It is IMPORTANT to look at the logging to see what is wrong.
   It will generate separate .cwl and .dot files for each step of the original workflow.
   The generated CWL files will probably have to be reviewed to ensure a correct workflow representation. In general the syntax should already be correct.
   The .dot files can be visualized using a web tool like https://dreampuf.github.io/GraphvizOnline. Can be very useful to understand the CWL workflow even if it is not correct.
-  The generated ro-crate-metadata.json file will include the necessary objects that are used in the CWL workflow, but will need to be reviewed to add the necesary metadata.
+  The generated ro-crate-metadata.json file will include the necessary objects that are used in the CWL workflow, but will need to be reviewed to add the necessary metadata.
 `)
 		}
 
-		// Initialize the logger
-		log.SetFlags(log.LstdFlags | log.Lshortfile)
-
-		// Parse flags for 'convert' subcommand
 		err := convertCmd.Parse(os.Args[2:])
 		if err != nil {
 			log.Fatalf("Error parsing flags for 'convert': %v", err)
 		}
 
-		// infer the work package from the workflow id
+		// Infer the work package from the workflow id
 		workPackage := (*workflowID)[0:3]
 		workPackage = strings.ReplaceAll(workPackage, "WF", "wp")
 		runConvert(*dbFile, *workflowID, workPackage, *resetDB)
@@ -76,7 +87,6 @@ Description:
 		cwlFilePath := generateCmd.String("cwl", "", "Path to the CWL file")
 		workflowName := generateCmd.String("name", "", "Name of the workflow")
 
-		// Customize the usage message for 'generate-ro-crate'
 		generateCmd.Usage = func() {
 			usageText := `
 Usage: dt-geo-converter generate-ro-crate -cwl <path_to_cwl_file> -name <workflow_name>
@@ -91,7 +101,6 @@ Description:
 `)
 		}
 
-		// Parse flags for 'generate-ro-crate' subcommand
 		err := generateCmd.Parse(os.Args[2:])
 		if err != nil {
 			log.Fatalf("Error parsing flags for 'generate-ro-crate': %v", err)
@@ -109,7 +118,6 @@ Description:
 			os.Exit(1)
 		}
 
-		// Implement the logic to generate RO-Crate from the CWL file
 		cwl, err := cwl.ImportCWL(*cwlFilePath)
 		if err != nil {
 			log.Fatalf("Failed to import CWL file: %v", err)
