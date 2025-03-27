@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -21,6 +20,7 @@ func Info(v ...any) {
 
 func Fatal(v ...any) {
 	log.Println("[FATAL ERROR]", v)
+	os.Exit(1)
 }
 
 func Error(v ...any) {
@@ -33,11 +33,17 @@ func Warning(v ...any) {
 
 // StartCopyLogToFile sets up logging to write to both stdout and a log file.
 // It returns the original logger output and the opened log file, so the caller can restore output and close the file.
-func StartCopyLogToFile(file string) (originalOutput io.Writer, logFile *os.File, err error) {
+func StartCopyLogToFile(fileName, path string) (originalOutput io.Writer, logFile *os.File, err error) {
 	// Create a conversion-specific log file.
-	logFile, err = os.Create(file)
+	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+		Error("Error creating directory", path, ":", err)
+		return nil, nil, err
+	}
+	filePath := path + "/" + fileName
+	logFile, err = os.Create(filePath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to create conversion log file: %w", err)
+		Error("Error creating README file at", filePath, ":", err)
+		return nil, nil, err
 	}
 
 	// Save the original logger output.

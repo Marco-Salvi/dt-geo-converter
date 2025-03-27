@@ -10,7 +10,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"text/template"
+
+	_ "embed"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -371,13 +375,11 @@ func insertWF(db *sql.DB, filename string) error {
 // processWorkflow generates the workflow graph and saves it to files.
 func processWorkflow(db *sql.DB, workflowID string) error {
 	// Set up logging for this conversion.
-	path := "./workflows/" + workflowID + "/log.log"
-	originalOutput, logFile, err := logger.StartCopyLogToFile(path)
+	path := "./workflows/" + workflowID
+	originalOutput, logFile, err := logger.StartCopyLogToFile("log.log", path)
 	if err != nil {
 		return err
 	}
-	// Restore the original output and close the log file when done.
-	defer logger.StopCopyLogToFile(originalOutput, logFile)
 
 	logger.Info("Loading workflow graph for ID", workflowID)
 	workflow, err := implicit.GetWorkflowGraph(workflowID, db)
@@ -390,5 +392,83 @@ func processWorkflow(db *sql.DB, workflowID string) error {
 		return fmt.Errorf("error saving workflow to file: %w", err)
 	}
 
+	// Stop logging to flush the file before reading it.
+	logger.StopCopyLogToFile(originalOutput, logFile)
+
+	issues, err := os.ReadFile(path + "/log.log")
+	if err != nil {
+		return fmt.Errorf("error reading log file: %w", err)
+	}
+	if err := createReadme(workflow, string(issues), path); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// ReadmeData holds the information to fill in the template.
+type ReadmeData struct {
+	WorkflowID     string
+	DetectedIssues string // This could be a multi-line string with the issues.
+	LogFile        string
+}
+
+//go:embed templates/readme.template
+var readmeTemplate string
+
+// createReadme loads a dedicated template file and writes a README.md file in the workflow directory.
+func createReadme(w implicit.Workflow, issues string, logFilePath string) error {
+	issues = filterWarnings(issues)
+
+	data := ReadmeData{
+		WorkflowID:     w.Name,
+		DetectedIssues: issues,
+		LogFile:        logFilePath,
+	}
+
+	// Parse the embedded template.
+	tmpl, err := template.New("readme").Parse(readmeTemplate)
+	if err != nil {
+		logger.Error("Error parsing embedded README template:", err)
+		return err
+	}
+
+	dirPath := "workflows/" + w.Name + "/"
+	readmePath := dirPath + "README.md"
+
+	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+		logger.Error("Error creating directory", dirPath, ":", err)
+		return err
+	}
+
+	file, err := os.Create(readmePath)
+	if err != nil {
+		logger.Error("Error creating README file at", readmePath, ":", err)
+		return err
+	}
+	defer file.Close()
+
+	if err = tmpl.Execute(file, data); err != nil {
+		logger.Error("Error executing README template:", err)
+		return err
+	}
+
+	logger.Debug("Created README file at", readmePath)
+	return nil
+}
+
+func filterWarnings(logStr string) string {
+	// Compile a regex to remove the date and time at the beginning.
+	re := regexp.MustCompile(`^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} `)
+	var filteredLines []string
+
+	lines := strings.Split(logStr, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "[WARNING]") || strings.Contains(line, "[ERROR]") {
+			// Remove the date/time prefix.
+			cleaned := re.ReplaceAllString(line, "")
+			filteredLines = append(filteredLines, cleaned)
+		}
+	}
+	return strings.Join(filteredLines, "\n")
 }

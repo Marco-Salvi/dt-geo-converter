@@ -287,7 +287,7 @@ func (w *Workflow) SaveToFile(db *sql.DB) error {
 		logger.Debug("Saved CWL file for vertex", vertex.Id)
 	}
 
-	file, err := os.Create(path + "steps.dot")
+	file, err := os.Create(path + w.Name + ".dot")
 	if err != nil {
 		logger.Error("Failed to create file", path+"steps.dot", ":", err)
 		return err

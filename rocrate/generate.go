@@ -18,18 +18,18 @@ func GenerateRoCrate(wf string, originalCwl cwl.Cwl) (RoCrate, error) {
 		ConformsTo: []IDRef{{"https://w3id.org/ro/crate/1.1"}, {"https://w3id.org/workflowhub/workflow-ro-crate/1.0"}},
 		About:      IDRef{"./"},
 	})
-	graph = append(graph, CreativeWork{
-		ID:      "https://w3id.org/ro/wfrun/process/0.4",
-		Type:    "CreativeWork",
-		Name:    "Process Run Crate",
-		Version: "0.4",
-	})
-	graph = append(graph, CreativeWork{
-		ID:      "https://w3id.org/ro/wfrun/workflow/0.4",
-		Type:    "CreativeWork",
-		Name:    "Workflow Run Crate",
-		Version: "0.4",
-	})
+	// graph = append(graph, CreativeWork{
+	// 	ID:      "https://w3id.org/ro/wfrun/process/0.4",
+	// 	Type:    "CreativeWork",
+	// 	Name:    "Process Run Crate",
+	// 	Version: "0.4",
+	// })
+	// graph = append(graph, CreativeWork{
+	// 	ID:      "https://w3id.org/ro/wfrun/workflow/0.4",
+	// 	Type:    "CreativeWork",
+	// 	Name:    "Workflow Run Crate",
+	// 	Version: "0.4",
+	// })
 	graph = append(graph, CreativeWork{
 		ID:      "https://w3id.org/workflowhub/workflow-ro-crate/1.0",
 		Type:    "CreativeWork",
@@ -107,8 +107,8 @@ func addWorkflowToRoCrate(rocrate *[]any, wf string, originalCwl cwl.Cwl) error 
 			License:     "TODO",
 			Author:      IDRef{"TODO"},
 			ConformsTo: []IDRef{
-				{"https://w3id.org/ro/wfrun/process/0.4"},
-				{"https://w3id.org/ro/wfrun/workflow/0.4"},
+				// {"https://w3id.org/ro/wfrun/process/0.4"},
+				// {"https://w3id.org/ro/wfrun/workflow/0.4"},
 				{"https://w3id.org/workflowhub/workflow-ro-crate/1.0"},
 			},
 			HasPart:    workflowHasPart,
