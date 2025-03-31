@@ -2,9 +2,9 @@ package implicit
 
 import (
 	"database/sql"
-	"dt-geo-db/logger"
-	"dt-geo-db/model"
-	"dt-geo-db/rocrate"
+	"dt-geo-converter/logger"
+	"dt-geo-converter/model"
+	"dt-geo-converter/rocrate"
 	"os"
 	"strings"
 

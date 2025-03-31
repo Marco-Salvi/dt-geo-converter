@@ -2,9 +2,9 @@ package implicit
 
 import (
 	"database/sql"
-	"dt-geo-db/cwl"
-	"dt-geo-db/logger"
-	"dt-geo-db/model"
+	"dt-geo-converter/cwl"
+	"dt-geo-converter/logger"
+	"dt-geo-converter/model"
 )
 
 // WorkflowToCWL converts a workflow to a CWL description.

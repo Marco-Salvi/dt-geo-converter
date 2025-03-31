@@ -2,8 +2,8 @@ package rocrate
 
 import (
 	"database/sql"
-	"dt-geo-db/cwl"
-	"dt-geo-db/model"
+	"dt-geo-converter/cwl"
+	"dt-geo-converter/model"
 	"strings"
 )
 
@@ -126,7 +126,7 @@ func WorkflowToRoCrate(wf string, cwl cwl.Cwl, db *sql.DB) (RoCrate, error) {
 		URL:        "https://www.commonwl.org/",
 	})
 
-	//TODO SoftwareApplication
+	// TODO SoftwareApplication
 	for _, step := range steps {
 		graph = append(graph, SoftwareSourceCode{
 			ID:          step.ID,
@@ -136,7 +136,7 @@ func WorkflowToRoCrate(wf string, cwl cwl.Cwl, db *sql.DB) (RoCrate, error) {
 		})
 	}
 
-	//Datasets
+	// Datasets
 	for _, dataset := range datasets {
 		graph = append(graph, DatasetDetails{
 			ID:            dataset.ID,

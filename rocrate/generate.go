@@ -1,8 +1,8 @@
 package rocrate
 
 import (
-	"dt-geo-db/cwl"
-	"dt-geo-db/logger"
+	"dt-geo-converter/cwl"
+	"dt-geo-converter/logger"
 )
 
 // GenerateRoCrate creates a RO-Crate metadata package from the given CWL.

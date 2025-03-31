@@ -2,10 +2,10 @@ package commands
 
 import (
 	"database/sql"
-	"dt-geo-db/cwl"
-	"dt-geo-db/implicit"
-	"dt-geo-db/logger"
-	"dt-geo-db/rocrate"
+	"dt-geo-converter/cwl"
+	"dt-geo-converter/implicit"
+	"dt-geo-converter/logger"
+	"dt-geo-converter/rocrate"
 	"encoding/csv"
 	"fmt"
 	"os"
