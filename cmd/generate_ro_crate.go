@@ -16,7 +16,7 @@ var (
 
 var generateRoCrateCmd = &cobra.Command{
 	Use:   "generate-ro-crate",
-	Short: "Generate RO‑Crate metadata package from a CWL file",
+	Short: "Generate RO‑Crate metadata package from a CWL file (WIP)",
 	Run: func(cmd *cobra.Command, args []string) {
 		if cwlPath == "" || workflowName == "" {
 			fmt.Println("Both --cwl and --name flags are required.")
