@@ -22,7 +22,8 @@ import (
 // InitDatabase initializes (or re‑initializes) the database using CSV files.
 // The 'dir' parameter must point to a folder that either contains the CSV files directly,
 // or contains subdirectories where each has the expected CSV files.
-func InitDatabase(dbFile, dir string, update bool) {
+func InitDatabase(dbFile, dir string, update bool) error {
+	logger.Info("Initializing database")
 	// Check if the DB exists.
 	dbExists := false
 	if _, err := os.Stat(dbFile); err == nil {
@@ -32,7 +33,7 @@ func InitDatabase(dbFile, dir string, update bool) {
 	// If update is requested, remove the existing database.
 	if update && dbExists {
 		if err := resetDatabase(dbFile); err != nil {
-			logger.Fatal("Failed to reset database:", err)
+			return fmt.Errorf("failed to reset database: %w", err)
 		}
 		dbExists = false
 	}
@@ -40,13 +41,13 @@ func InitDatabase(dbFile, dir string, update bool) {
 	// Open the database.
 	db, err := sql.Open("sqlite3", dbFile)
 	if err != nil {
-		logger.Fatal("Failed to open database:", err)
+		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer db.Close()
 
 	// Create tables.
 	if err := createTables(db); err != nil {
-		logger.Fatal("Failed to create tables:", err)
+		return fmt.Errorf("failed to create tables: %w", err)
 	}
 
 	// Determine if the provided directory contains CSV files directly
@@ -54,35 +55,31 @@ func InitDatabase(dbFile, dir string, update bool) {
 	if _, err := os.Stat(filepath.Join(dir, "wf.csv")); err == nil {
 		logger.Info("Importing CSV data from directory:", dir)
 		if err := importDataFromCSV(db, dir); err != nil {
-			logger.Fatal("Failed to import CSV data:", err)
+			return fmt.Errorf("failed to import CSV data: %w", err)
 		}
 	} else {
 		// Otherwise, assume it contains subdirectories.
 		entries, err := os.ReadDir(dir)
 		if err != nil {
-			logger.Fatal("Error reading directory:", err)
+			return fmt.Errorf("error reading directory: %w", err)
 		}
 		for _, entry := range entries {
 			if entry.IsDir() {
 				subDir := filepath.Join(dir, entry.Name())
-				logger.Info("Importing CSV data from subdirectory:", subDir)
+				logger.Debug("Importing CSV data from subdirectory:", subDir)
 				if err := importDataFromCSV(db, subDir); err != nil {
 					logger.Error("Failed to import CSV data from", subDir, ":", err)
 				}
 			}
 		}
 	}
-	logger.Info("Database initialized successfully.")
+	logger.Info("Database initialized successfully")
+	return nil
 }
 
 // ConvertWorkflows converts one or all workflows from the database.
 // If 'update' is true, the database is re‑initialized using the CSV data from 'dir' before conversion.
-func ConvertWorkflows(dbFile, dir, workflowID string, all bool, update bool) {
-	// If update is requested, re‑initialize the database.
-	if update {
-		InitDatabase(dbFile, dir, true)
-	}
-
+func ConvertWorkflows(dbFile, workflowID string, all bool) {
 	db, err := sql.Open("sqlite3", dbFile)
 	if err != nil {
 		logger.Fatal("Failed to open database:", err)
@@ -178,7 +175,7 @@ func resetDatabase(dbFile string) error {
 	if err := os.Remove(dbFile); err != nil {
 		return fmt.Errorf("error removing database file %s: %w", dbFile, err)
 	}
-	logger.Info("Database file", dbFile, "removed successfully")
+	logger.Info("Old database file", dbFile, "removed successfully")
 	return nil
 }
 
@@ -205,12 +202,6 @@ func createTables(db *sql.DB) error {
 			PRIMARY KEY (id1, relationship_type, id2)
 		);`,
 		`CREATE TABLE IF NOT EXISTS SS_SS (
-			id1 TEXT,
-			relationship_type TEXT NOT NULL,
-			id2 TEXT,
-			PRIMARY KEY (id1, relationship_type, id2)
-		);`,
-		`CREATE TABLE IF NOT EXISTS DT_DT (
 			id1 TEXT,
 			relationship_type TEXT NOT NULL,
 			id2 TEXT,
@@ -259,7 +250,6 @@ func importDataFromCSV(db *sql.DB, dir string) error {
 		"WF_WF": filepath.Join(dir, "wf_wf.csv"),
 		"ST_ST": filepath.Join(dir, "st_st.csv"),
 		"SS_SS": filepath.Join(dir, "ss_ss.csv"),
-		"DT_DT": filepath.Join(dir, "dt_dt.csv"),
 		"SS_ST": filepath.Join(dir, "ss_st.csv"),
 		"ST_WF": filepath.Join(dir, "st_wf.csv"),
 		"DT_ST": filepath.Join(dir, "dt_st.csv"),
@@ -267,7 +257,7 @@ func importDataFromCSV(db *sql.DB, dir string) error {
 	}
 
 	for table, file := range relationships {
-		logger.Info("Importing table from file:", file)
+		logger.Debug("Importing table from file:", file)
 		if err := importFromCSV(db, table, file); err != nil {
 			return err
 		}
@@ -351,14 +341,15 @@ func insertWF(db *sql.DB, filename string) error {
 		if err != nil {
 			break
 		}
-		if len(row) < 3 {
-			continue
-		}
 		name := strings.TrimSpace(row[0])
-		description := strings.TrimSpace(row[1])
-		author := strings.TrimSpace(row[2])
+		// TODO
+		// if len(row) < 3 {
+		// 	continue
+		// }
+		// description := strings.TrimSpace(row[1])
+		// author := strings.TrimSpace(row[2])
 
-		if _, err = stmt.Exec(name, description, author); err != nil {
+		if _, err = stmt.Exec(name, "", ""); err != nil {
 			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 				logger.Warning("Duplicate workflow record encountered, skipping row:", row)
 				continue

@@ -14,8 +14,7 @@ var debug bool
 var rootCmd = &cobra.Command{
 	Use:   "dt-geo-converter",
 	Short: "A tool to manage the dt-geo database and workflow conversion",
-	Long: `A CLI tool to initialize the database with CSV data, convert workflows into CWL, generate workflow graphs, and produce RO‑Crate metadata.
-`,
+	Long:  "A CLI tool to initialize the database with CSV data, convert workflows into CWL, generate workflow graphs, and produce RO‑Crate metadata.",
 	// PersistentPreRun runs before any subcommand.
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if debug {

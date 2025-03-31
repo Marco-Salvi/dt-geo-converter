@@ -11,10 +11,6 @@ var listDBFile string
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List workflows available in the database",
-	Long: `List workflows available in the database.
-
-Usage:
-  dt-geo-converter list [--db <dbfile>]`,
 	Run: func(cmd *cobra.Command, args []string) {
 		commands.ListWorkflows(listDBFile)
 	},

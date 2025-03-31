@@ -17,10 +17,6 @@ var (
 var generateRoCrateCmd = &cobra.Command{
 	Use:   "generate-ro-crate",
 	Short: "Generate RO‑Crate metadata package from a CWL file",
-	Long: `Generate RO‑Crate metadata package from a CWL file.
-
-Usage:
-  dt-geo-converter generate-ro-crate --cwl <path_to_cwl_file> --name <workflow_name> [--output <filename>]`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if cwlPath == "" || workflowName == "" {
 			fmt.Println("Both --cwl and --name flags are required.")
