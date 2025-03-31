@@ -53,8 +53,8 @@ jobs:
       - name: Create GitHub Release and Upload Binaries
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          name: "Release ${{ github.ref }}"
+          tag_name: ${{ github.ref_name }}
+          name: "${{ github.ref_name }}"
           files: |
             dt-geo-converter-linux/dt-geo-converter-linux
             dt-geo-converter-macos/dt-geo-converter-macos
