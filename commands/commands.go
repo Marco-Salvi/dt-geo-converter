@@ -341,15 +341,11 @@ func insertWF(db *sql.DB, filename string) error {
 		if err != nil {
 			break
 		}
-		name := strings.TrimSpace(row[0])
-		// TODO
-		// if len(row) < 3 {
-		// 	continue
-		// }
-		// description := strings.TrimSpace(row[1])
-		// author := strings.TrimSpace(row[2])
+		name := safeAccess(row, 0)
+		description := safeAccess(row, 1)
+		author := safeAccess(row, 2)
 
-		if _, err = stmt.Exec(name, "", ""); err != nil {
+		if _, err = stmt.Exec(name, description, author); err != nil {
 			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 				logger.Warning("Duplicate workflow record encountered, skipping row:", row)
 				continue
@@ -462,4 +458,11 @@ func filterWarnings(logStr string) string {
 		}
 	}
 	return strings.Join(filteredLines, "\n")
+}
+
+func safeAccess(slice []string, index int) string {
+	if index < len(slice) {
+		return strings.TrimSpace(slice[index])
+	}
+	return ""
 }

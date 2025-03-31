@@ -5,6 +5,7 @@ import (
 	"dt-geo-converter/logger"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -13,7 +14,7 @@ var (
 	initDBFile string
 	initDir    string
 	initUpdate bool
-	initRemote bool
+	initRemote string
 )
 
 var initDBCmd = &cobra.Command{
@@ -27,21 +28,26 @@ var initDBCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if initRemote { // use the remote sheets
-			var err error
-			initDir, err = commands.DownloadRemoteSheets()
+		if initRemote != "" {
+
+			remotes, err := parseRemoteFlag()
+			if err != nil {
+				fmt.Printf("Failed to parse the --remote flag: %v\n", err)
+				os.Exit(1)
+			}
+			initDir, err = commands.DownloadRemoteSheets(remotes)
 			if err != nil {
 				fmt.Printf("Failed to download remote sheets: %v\n", err)
 				os.Exit(1)
 			}
-			// Make sure we clean up the temp directory when done
+			// Ensure we clean up the temporary directory when done.
 			defer func() {
 				if err := os.RemoveAll(initDir); err != nil {
 					logger.Error("Warning: failed to clean up temporary directory %s: %v", initDir, err)
 				}
 				logger.Debug("Successfully removed temp dir")
 			}()
-		} else if initDir == "" { // if remote is not specified, the dir must be specified
+		} else if initDir == "" {
 			fmt.Println("The --dir flag is required if not using --remote.")
 			_ = cmd.Help()
 			os.Exit(1)
@@ -64,14 +70,56 @@ var initDBCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(initDBCmd)
+	// Dynamically retrieve available work packages for help text.
+	availableWPs := commands.GetAvailableWPs()
+	helpMsg := fmt.Sprintf(
+		"Initialize the database using the remote spreadsheets in the DT-GEO Google Drive. "+
+			"Allowed values: 'all' or a comma-separated list from [%s]. Use '--remote all' to load all available work packages.",
+		strings.Join(availableWPs, ", "))
 
+	rootCmd.AddCommand(initDBCmd)
 	// Define and document all flags
 	initDBCmd.Flags().StringVar(&initDBFile, "db", "./db.db", "Path to the database file")
 	initDBCmd.Flags().StringVar(&initDir, "dir", "", "Directory containing CSV files or subdirectories with CSV files")
 	initDBCmd.Flags().BoolVar(&initUpdate, "update", false, "Reset and reinitialize the database if it exists")
-	initDBCmd.Flags().BoolVar(&initRemote, "remote", false, "Initialize the database using the remote spreadsheets in the DT-GEO Google Drive")
+	initDBCmd.Flags().StringVar(&initRemote, "remote", "", helpMsg)
 
-	// Mark flags as required or provide usage examples
+	// Mark flags as mutually exclusive
 	initDBCmd.MarkFlagsMutuallyExclusive("dir", "remote")
+}
+
+func parseRemoteFlag() ([]string, error) {
+	// Clean up the remote flag value and split it
+	remoteVal := strings.TrimSpace(initRemote)
+	var remotes []string
+
+	// If the value is "all" (case-insensitive), use that directly.
+	if strings.EqualFold(remoteVal, "all") {
+		remotes = []string{"all"}
+	} else {
+		// Split on commas and trim spaces from each remote key.
+		parts := strings.Split(remoteVal, ",")
+		for _, p := range parts {
+			trimmed := strings.TrimSpace(p)
+			if trimmed != "" {
+				remotes = append(remotes, trimmed)
+			}
+		}
+		if len(remotes) == 0 {
+			return nil, fmt.Errorf("error: invalid --remote flag value")
+		}
+		// Retrieve available work packages dynamically.
+		availableWPs := commands.GetAvailableWPs()
+		allowed := make(map[string]bool)
+		for _, wp := range availableWPs {
+			allowed[wp] = true
+		}
+		// Validate each provided remote value.
+		for _, r := range remotes {
+			if !allowed[r] {
+				return nil, fmt.Errorf("error: unknown remote value '%s'. Allowed values are 'all' or one of [%s]", r, strings.Join(availableWPs, ", "))
+			}
+		}
+	}
+	return remotes, nil
 }
