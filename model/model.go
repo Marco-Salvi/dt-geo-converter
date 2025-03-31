@@ -241,6 +241,7 @@ func GetDTsForWF(db *sql.DB, wfName string) ([]DT, error) {
 
 	return dataTypes, nil
 }
+
 func GetDTSTRelationshipsForWF(db *sql.DB, wfName string) ([]DTSTRelationship, error) {
 	query := `
         SELECT dt_st.id1 AS dt_id, dt_st.relationship_type, dt_st.id2 AS st_id

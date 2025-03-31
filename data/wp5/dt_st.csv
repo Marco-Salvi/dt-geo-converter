@@ -14,7 +14,7 @@ DT5110,is output from,ST510110
 DT5111,is output from,ST510109
 DT5111,is input to,ST510111
 DT5111,is input to,ST510112
-DT5201,is output,from,ST520101
+DT5201,is output from,ST520101
 DT5202,is output from,ST520104
 DT5203,is output from,ST520105
 DT5204,is output from,ST520106
