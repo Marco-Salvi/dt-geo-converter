@@ -80,7 +80,7 @@ func InitDatabase(dbFile, dir string, update bool) error {
 // ConvertWorkflows converts one or all workflows from the database.
 // If 'update' is true, the database is re‑initialized using the CSV data from 'dir' before conversion.
 func ConvertWorkflows(dbFile, workflowID string, all bool) {
-	db, err := sql.Open("sqlite3", dbFile)
+	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
 		logger.Fatal("Failed to open database:", err)
 	}
@@ -147,7 +147,7 @@ func GenerateRoCrate(cwlPath, workflowName, output string) {
 
 // ListWorkflows prints out all workflows stored in the database.
 func ListWorkflows(dbFile string) {
-	db, err := sql.Open("sqlite3", dbFile)
+	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
 		logger.Fatal("Failed to open database:", err)
 	}
