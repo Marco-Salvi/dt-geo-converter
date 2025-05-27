@@ -41,15 +41,12 @@ dt-geo-converter version
 
 ### Development
 
-During development you can use the provided `Makefile` to run common tasks:
+During development you can use the provided `makefile` to run common tasks:
 
 ```bash
-# build a local binary embedding a version string
 make build VERSION=dev
-
-# run vet and tests
 make vet
-make test
+...
 ```
 
 ## Data Sources
