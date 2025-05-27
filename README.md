@@ -31,6 +31,27 @@ For help with a specific command:
 dt-geo-converter [command] --help
 ```
 
+### Checking the Version
+
+To see which version of the tool you have installed, run:
+
+```bash
+dt-geo-converter version
+```
+
+### Development
+
+During development you can use the provided `Makefile` to run common tasks:
+
+```bash
+# build a local binary embedding a version string
+make build VERSION=dev
+
+# run vet and tests
+make vet
+make test
+```
+
 ## Data Sources
 
 The tool supports two primary data sources:

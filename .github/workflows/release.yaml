@@ -31,9 +31,9 @@ jobs:
         env:
           GOOS: ${{ matrix.platform.goos }}
           GOARCH: ${{ matrix.platform.goarch }}
+          VERSION: ${{ github.ref_name }}
         run: |
-          # Build the binary with a unique name per platform
-          go build -o dt-geo-converter-${{ matrix.platform.os }}${{ matrix.platform.ext }} .
+          go build -ldflags "-X dt-geo-converter/cmd.Version=$VERSION" -o dt-geo-converter-${{ matrix.platform.os }}${{ matrix.platform.ext }} .
 
       - name: Upload Artifact for ${{ matrix.platform.os }}
         uses: actions/upload-artifact@v4

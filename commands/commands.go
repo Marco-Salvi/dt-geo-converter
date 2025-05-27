@@ -16,7 +16,7 @@ import (
 
 	_ "embed"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // InitDatabase initializes (or re‑initializes) the database using CSV files.
@@ -39,7 +39,7 @@ func InitDatabase(dbFile, dir string, update bool) error {
 	}
 
 	// Open the database.
-	db, err := sql.Open("sqlite3", dbFile)
+	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
